@@ -1,0 +1,5 @@
+/*!
+
+\mainpage madeleine interpolation tool
+
+*/

@@ -12,13 +12,10 @@ project(madeleine)
 #------------------------------------------------------------------------------------#
 set(ENABLE_MPI 0 CACHE BOOL "If set, the program is compiled with MPI support")
 set(VERBOSE_MAKE 0 CACHE BOOL "Set appropriate compiler and cmake flags to enable verbose output from compilation")
-set(PETSC_DIR "$ENV{PETSC_DIR}" CACHE PATH "Directory in which PETSc resides")
-set(PETSC_ARCH "$ENV{PETSC_ARCH}" CACHE STRING "PETSc build architecture")
 
 #------------------------------------------------------------------------------------#
 # Internal variables
 #------------------------------------------------------------------------------------#
-set(SPECIES_DATABASE_DIR "share/${CMAKE_PROJECT_NAME}/species" CACHE INTERNAL "directory where the species database will be intalled")
 
 #------------------------------------------------------------------------------------#
 # Internal dependencies
@@ -211,21 +208,36 @@ endif ()
 #------------------------------------------------------------------------------------#
 # External dependencies
 #------------------------------------------------------------------------------------#
+
+set(MADELEINE_EXTERNAL_LIBRARIES "")
+set(MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "")
+
+###     BITPIT      ###############################################
 find_package(BITPIT REQUIRED)
 include(${BITPIT_USE_FILE})
+list (APPEND MADELEINE_EXTERNAL_LIBRARIES "${BITPIT_LIBRARIES}")
 
+###      LAPACKE   ################################################
 set(LAPACKE_STATIC 0 CACHE BOOL "Require LAPACKE static libraries")
 mark_as_advanced(LAPACKE_STATIC)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/external/LAPACKE/cmake")
 find_package(LAPACK REQUIRED)
 find_package(LAPACKE REQUIRED)
+set(LAPACKE_PRIVATE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/LAPACKE/include")
+unset(LAPACKEXT_DIR CACHE)
+list (APPEND MADELEINE_EXTERNAL_LIBRARIES "${LAPACKE_LIBRARIES}" "${LAPACK_LIBRARIES}")
+list (APPEND MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "${LAPACKE_INCLUDE_DIRS}" "${LAPACK_INCLUDE_DIRS}")
+list (APPEND MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "${LAPACKE_PRIVATE_INCLUDE_DIR}" "${LAPACK_INCLUDE_DIRS}")
 
+###     XML2      #################################################
 find_package(LibXml2 REQUIRED)
+list (APPEND MADELEINE_EXTERNAL_LIBRARIES "${LIBXML2_LIBRARIES}")
+list (APPEND MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "${LIBXML2_INCLUDE_DIR}")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/external/PETSc/cmake")
-set(PETSC_DIR "" CACHE PATH "Directory in which PETSc resides")
-set(PETSC_ARCH "arch-linux2-c" CACHE STRING "Build architecture")
-find_package(PETSc REQUIRED)
+###     MPI      #################################################
+if (ENABLE_MPI)
+    list (APPEND MADELEINE_EXTERNAL_LIBRARIES "${MPI_CXX_LIBRARIES}")
+endif()
 
 #------------------------------------------------------------------------------------#
 # Subdirectories
@@ -237,6 +249,5 @@ ADD_SUBDIRECTORY(src)
 # Docs
 add_subdirectory(doc)
 
-# Tests
-#enable_testing()
-#add_subdirectory(test)
+# Examples
+add_subdirectory(examples)

@@ -34,8 +34,8 @@ class build_ext(_build_ext):
 
     # Add new \"user_options\" \"bitpit-lib-path\", \"mpi-library-path\",
     # \"extensions-source\" and \"bitpit-lib-path\".
-    user_options.append(("bitpit-include-path=", "P", "bitpit include path"))
-    user_options.append(("madeleine-include-path=", "I", "madeleine include path"))
+    user_options.append(("bitpit-path=", "P", "bitpit path"))
+    user_options.append(("madeleine-path=", "I", "madeleine path"))
     user_options.append(("mpi-include-path=", "M", "mpi include path"))
     user_options.append(("extensions-source=", "E", "extensions source file"))
 
@@ -64,28 +64,28 @@ class build_ext(_build_ext):
         return MPI_INCLUDE_PATH
 
 
-    def find_bitpit_include_path(self):
-        BITPIT_INCLUDE_PATH = os.environ.get("BITPIT_INCLUDE_PATH")
+    def find_bitpit_path(self):
+        BITPIT_PATH = os.environ.get("BITPIT_PATH")
 
-        if (BITPIT_INCLUDE_PATH is None):
+        if (BITPIT_PATH is None):
             print("No \"BITPIT_INCLUDE_PATH\" env variable found. " +
                   "Please, check this out or enter it via shell.")
 
             sys.exit(1)
 
-        return BITPIT_INCLUDE_PATH
+        return BITPIT_PATH
 
 
-    def find_madeleine_include_path(self):
-        MADELEINE_INCLUDE_PATH = os.environ.get("MADELEINE_INCLUDE_PATH")
+    def find_madeleine_path(self):
+        MADELEINE_PATH = os.environ.get("MADELEINE_PATH")
 
-        if (MADELEINE_INCLUDE_PATH is None):
-            print("Dude, no \"MADELEINE_INCLUDE_PATH\" env variable found. Please, " + 
+        if (MADELEINE_PATH is None):
+            print("Dude, no \"MADELEINE_PATH\" env variable found. Please, " + 
                   "check this out or enter it via shell.")
 
             sys.exit(1)
 
-        return MADELEINE_INCLUDE_PATH
+        return MADELEINE_PATH
 
 
     def check_extensions_source(self):
@@ -101,8 +101,8 @@ class build_ext(_build_ext):
         _build_ext.initialize_options(self)
 
         # Initializing own new \"user_options\".
-        self.bitpit_include_path = None
-        self.madeleine_include_path = None
+        self.bitpit_path = None
+        self.madeleine_path = None
         self.mpi_include_path = None
         self.extensions_source = None
 
@@ -115,10 +115,10 @@ class build_ext(_build_ext):
         # values.
         if (self.mpi_include_path is None):
             self.mpi_include_path = self.find_mpi_include_path()
-        if (self.bitpit_include_path is None):
-            self.bitpit_include_path = self.find_PABLO_include_path()
-        if (self.madeleine_include_path is None):
-            self.madeleine_include_path = self.find_IO_include_path()
+        if (self.bitpit_path is None):
+            self.bitpit_path = self.find_bipit_path()
+        if (self.madeleine_path is None):
+            self.madeleine_path = self.find_madeleine_path()
 
         # Check if the source to pass at the \"Extension\" class is present and
         # finishes with \".pyx\".
@@ -133,19 +133,19 @@ class build_ext(_build_ext):
         os.environ["CXX"] = "c++"
         os.environ["CC"] = "gcc"
         BITPIT_ENABLE_MPI = 0
-        include_libs = "-I" + self.bitpit_include_path
-        include_libs = include_libs + " -I" + self.madeleine_include_path
+        include_paths = [self.bitpit_path + "/include/bitpit/", self.madeleine_path + "../../src/"]
 
         if ((not (not self.mpi_include_path)) and (ENABLE_MPI4PY)):
             BITPIT_ENABLE_MPI = 1
-            include_libs = include_libs + " -I" + self.mpi_include_path
+            include_paths.append(self.mpi_include_path)
             os.environ["CXX"] = "mpic++"
             os.environ["CC"] = "mpicc"
 
         _extra_compile_args = ["-std=c++11",
-                               "-O0 g"       ,
+                               "-g"        ,
+                               "-O0"       ,
                                "-fPIC"     ,
-                               include_libs,
+                               #include_paths,
                                "-DBITPIT_ENABLE_MPI=" + str(BITPIT_ENABLE_MPI)]
         _extra_link_args = ["-fPIC"] # Needed? We have already the same flag for 
                                      # the compiler args above.
@@ -154,16 +154,20 @@ class build_ext(_build_ext):
                               # http://stackoverflow.com/questions/23351813/how-to-declare-an-ndarray-in-cython-with-a-general-floating-point-type
                               "nonecheck": False}
         _language = "c++"
-        _extra_objects = ["libbitpit_MPI_D.so" if (BITPIT_ENABLE_MPI) \
-                                               else "libbitpit_D.so",
-                                               "libmadeleine.so"]
+        bitpit_lib = self.bitpit_path + "/lib/"
+        if(BITPIT_ENABLE_MPI):
+            bitpit_lib = bitpit_lib + "libbitpit_MPI_D.so"
+        else:
+            bitpit_lib = bitpit_lib + "libbitpit_D.so"
+        madeleine_lib = self.madeleine_path + "libmadeleine.so"
+        _extra_objects = [bitpit_lib, madeleine_lib,"/usr/lib/x86_64-linux-gnu/libxml2.so"]
 
 ##FINO QUI!
-        piercedVector_subdir = os.path.dirname(self.bitpit_include_path) + "/containers/"
+        #print(os.path.dirname(self.bitpit_include_path))
+        #piercedVector_subdir = os.path.dirname(self.bitpit_include_path) + "/containers/"
         _include_dirs=["."                        , 
-                       self.madeleine_include_path,
-                       piercedVector_subdir       ,
-                       numpy_get_include()        ] 
+                       numpy_get_include()        ]
+        _include_dirs.extend(include_paths) 
        
         # Cython compile time environment.
         _cc_time_env = {"BITPIT_ENABLE_MPI": BITPIT_ENABLE_MPI}

@@ -4,8 +4,8 @@ from libc.stdint cimport uintptr_t
 cdef extern from "piercedVector.hpp" namespace "bitpit":
     cdef cppclass PiercedVector[value_t,id_t]:
         PiercedVector() except +
-        PiercedVector(const PiercedVector<value_t, id_t> &x) except +
-        PiercedVector<value_t, id_t> & operator=(PiercedVector<value_t, id_t> x)
+        PiercedVector(const PiercedVector[value_t, id_t] &x) except +
+        PiercedVector[value_t, id_t] & operator=(PiercedVector[value_t, id_t] x)
         
     
 cdef class Py_PiercedVector:
@@ -18,10 +18,10 @@ cdef class Py_PiercedVector:
         
         if(n_args == 0):
             self.thisptr = new PiercedVector[double,long]()
-        elif:
+        elif(n_args == 1):
             try:
                 int_ptr = args[0]
-                self.thisptr = new PiercedVector[double,long]((<PiercedVector[double]*><void*>int_ptr)[0])
+                self.thisptr = new PiercedVector[double,long]((<PiercedVector[double,long]*><void*>int_ptr)[0])
             except Exception as e:
                 traceback.print_exc()
         else:

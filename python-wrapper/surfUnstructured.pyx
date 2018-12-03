@@ -1,12 +1,12 @@
 import traceback
 from libc.stdint cimport uintptr_t
 
-cdef extern from "surfUnstructured.hpp" namespace "bitpit":
+cdef extern from "surfunstructured.hpp" namespace "bitpit":
     cdef cppclass SurfUnstructured:
         SurfUnstructured() except +
     
 cdef class Py_SufUnstructured:
-    cdef SurfUnstructured thisptr
+    cdef SurfUnstructured* thisptr
     
     def __cinit__(self,*args):
         
@@ -14,7 +14,7 @@ cdef class Py_SufUnstructured:
         n_args = len(args)
         
         if(n_args == 0):
-            self.thisptr = new SurfUnstructured[double,long]()
+            self.thisptr = new SurfUnstructured()
         else:
             print("Py_SurfUnstructured, wrong number of arguments!")
             

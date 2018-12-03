@@ -1,4 +1,5 @@
 include "piercedVector.pyx"
+include "surfUnstructured.pyx"
 
 cdef extern from "utils.hpp" namespace "coupling":
-    PiercedVector<double> initDoubleDataOnMesh(const SurfUnstructured * mesh)
+    PiercedVector[double,long] initDoubleDataOnMesh(const SurfUnstructured * mesh)

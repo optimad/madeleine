@@ -7,19 +7,19 @@ from libcpp.vector cimport vector
 from libcpp cimport bool
 
 cdef extern from "coupling.hpp" namespace "coupling":
-    ctypedef vector[string] svector
+    #ctypedef vector[string] svector
     
     cdef cppclass MeshCoupling:
         MeshCoupling() except +
-        MeshCoupling(svector,svector) except +
-        initialize(string,string,double)
-        compute(PiercedVector[double]&)
-        close()
+        MeshCoupling(vector[string],vector[string]) except +
+        void initialize(string,string,double)
+        void compute(PiercedVector[double,long]&)
+        void close()
         
 cdef class Py_MeshCoupling:
     cdef MeshCoupling* thisptr
     
-    def __cinit__(self,args*):
+    def __cinit__(self,*args):
         thisptr = NULL
         
         n_args =len(args)
@@ -32,16 +32,16 @@ cdef class Py_MeshCoupling:
             print("Py_MeshCoupling, wrong numbr of arguments!")
             
     def __dealloc__(self):
-        del sefl.thisptr
+        del self.thisptr
     
-    def initialize(self,string& unitDisciplineMeshFile, string& unitNeutralMeshFile):
-        return self.thisptr.initialize(<string&> unitDisciplineMeshFile, <string&> unitNeutralMeshFile)
+    def initialize(self,unitDisciplineMeshFile,unitNeutralMeshFile,sphereRadius):
+        self.thisptr.initialize(<string&> unitDisciplineMeshFile, <string&> unitNeutralMeshFile,<double> sphereRadius)
     
-    def compute(self,PiercedVector[double]& neutralData):
-        return self.thisptr.compute(<PiercedVector[double]&> neutralData)
+    def compute(self,neutralData):
+        self.thisptr.compute(<PiercedVector[double,long]&> neutralData)
     
-    def close():
-        return self.thisptr.close()
+    def close(self):
+        self.thisptr.close()
     
     
     

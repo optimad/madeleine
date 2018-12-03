@@ -12,3 +12,5 @@ CMakeFiles/
 _site/
 _config_local.yml
 .pydevproject
+python-wrapper/*.cpp
+python-wrapper/*.so

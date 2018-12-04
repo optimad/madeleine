@@ -95,9 +95,8 @@ void interpolateFromTo(SurfUnstructured * fromMesh, const PiercedVector<double> 
     \param[in] mesh the mesh
     \return the initialized PiercedVector
 */
-PiercedVector<double> initDoubleDataOnMesh(const SurfUnstructured * mesh){
+void initDoubleDataOnMesh(const SurfUnstructured * mesh, PiercedVector<double>* data){
 
-    PiercedVector<double> data;
     const PiercedVector<Vertex> & vertices = mesh->getVertices();
     for(const Vertex & v: vertices) {
         darray3 x = v.getCoords();
@@ -105,9 +104,8 @@ PiercedVector<double> initDoubleDataOnMesh(const SurfUnstructured * mesh){
         double datum = acos(x[2]/r) - M_PI/2;//sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
         datum = sin(4*datum);
         datum *= datum;
-        data.insert(v.getId(),datum);
+        data->insert(v.getId(),datum);
     }
-    return data;
 };
 
 /*!

@@ -5,7 +5,7 @@ cdef extern from "surfunstructured.hpp" namespace "bitpit":
     cdef cppclass SurfUnstructured:
         SurfUnstructured() except +
     
-cdef class Py_SufUnstructured:
+cdef class Py_SurfUnstructured:
     cdef SurfUnstructured* thisptr
     
     def __cinit__(self,*args):

@@ -135,11 +135,13 @@ class build_ext(_build_ext):
         BITPIT_ENABLE_MPI = 0
         include_paths = [self.bitpit_path + "/include/bitpit/", self.madeleine_path + "../../src/"]
 
+        mpi_lib = ""
         if ((not (not self.mpi_include_path)) and (ENABLE_MPI4PY)):
             BITPIT_ENABLE_MPI = 1
             include_paths.append(self.mpi_include_path)
             os.environ["CXX"] = "mpic++"
             os.environ["CC"] = "mpicc"
+            mpi_lib = "/usr/local/openmpi-1.10.5_intel/lib/libmpi.so"
 
         _extra_compile_args = ["-std=c++11",
                                "-g"        ,
@@ -160,7 +162,7 @@ class build_ext(_build_ext):
         else:
             bitpit_lib = bitpit_lib + "libbitpit_D.so"
         madeleine_lib = self.madeleine_path + "libmadeleine.so"
-        _extra_objects = [bitpit_lib, madeleine_lib,"/usr/lib/x86_64-linux-gnu/libxml2.so"]
+        _extra_objects = [mpi_lib, "-lxml2", bitpit_lib, madeleine_lib]
 
 ##FINO QUI!
         #print(os.path.dirname(self.bitpit_include_path))

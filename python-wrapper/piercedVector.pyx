@@ -29,23 +29,3 @@ cdef class Py_PiercedVector:
             
     def __dealloc__(self):
         del self.thisptr
-
-"""
-    @staticmethod        
-    def from_c(*args):
-        py_pv = Py_PiercedVector()
-        cdef uintptr_t int_ptr = 0
-        n_args = len(args)
-        
-        if(n_args == 0):
-            py_pv.thisptr = new PiercedVector[double,long]()
-        elif(n_args == 1):
-            try:
-                int_ptr = args[0]
-                py_pv.thisptr = new PiercedVector[double,long]((<PiercedVector[double,long]*><void*>int_ptr)[0])
-            except Exception as e:
-                traceback.print_exc()
-        else:
-            print("Py_PiercedVector, wrong number of arguments!")
-        return py_pv
-"""

@@ -14,8 +14,6 @@
 
 using namespace bitpit;
 
-namespace coupling {
-
 ///*!
 //    Build a scaled mesh from the input mesh, scaling the input mesh vertex coordinates by the radius factor
 //
@@ -144,7 +142,6 @@ void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<
 };
 
 
-}
 
 
 

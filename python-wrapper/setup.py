@@ -162,7 +162,7 @@ class build_ext(_build_ext):
         else:
             bitpit_lib = bitpit_lib + "libbitpit_D.so"
         madeleine_lib = self.madeleine_path + "libmadeleine.so"
-        _extra_objects = [mpi_lib, "-lxml2", bitpit_lib, madeleine_lib]
+        _extra_objects = [mpi_lib, bitpit_lib, madeleine_lib, "-lxml2"]
 
 ##FINO QUI!
         #print(os.path.dirname(self.bitpit_include_path))

@@ -1,9 +1,18 @@
-include "piercedVector.pyx"
-include "surfUnstructured.pyx"
-from libc.stdint cimport uintptr_t
+#def Py_initDoubleDataOnMesh(Py_SurfUnstructured mesh, Py_PiercedVector data):
+#    initDoubleDataOnMesh(mesh.thisptr,data.thisptr)
 
-cdef extern from "utils.hpp" namespace "coupling":
-    void initDoubleDataOnMesh(const SurfUnstructured * mesh, PiercedVector[double,long] * data)
+cimport cpiercedVector
+cimport csurfUnstructured
+cimport cutils
+
+cdef class Dummy:
     
-def Py_initDoubleDataOnMesh(Py_SurfUnstructured mesh, Py_PiercedVector data):
-    initDoubleDataOnMesh(mesh.thisptr,data.thisptr)
+    def __cinit__(self):
+        print("Dummy created")
+        
+    def __dealloc__(self):
+        print("Dummy destroyed")
+        
+    cdef test(self,const csurfUnstructured.SurfUnstructured * mesh, cpiercedVector.PiercedVector[double,long] * data):
+        cutils.initDoubleDataOnMesh(mesh,data)
+    

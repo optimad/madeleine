@@ -67,7 +67,7 @@ void test00001( int argc, char *argv[] ) {
     neutralToDiscipline.initialize(disciplineFilemesh,neutralFilemesh,2.0);
 
     PiercedVector<double> neutralData;
-    initDoubleDataOnMesh(neutralToDiscipline.getNeutralMesh(),&neutralData);
+    coupling::initDoubleDataOnMesh(neutralToDiscipline.getNeutralMesh(),&neutralData);
     neutralToDiscipline.compute(neutralData);
 
     neutralToDiscipline.close();

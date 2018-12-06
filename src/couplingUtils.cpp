@@ -5,7 +5,7 @@
  *      Author: marco
  */
 
-#include "utils.hpp"
+#include <couplingUtils.hpp>
 #include "bitpit_common.hpp"
 #include "bitpit_IO.hpp"
 #include "bitpit_CG.hpp"
@@ -14,6 +14,7 @@
 
 using namespace bitpit;
 
+namespace coupling {
 ///*!
 //    Build a scaled mesh from the input mesh, scaling the input mesh vertex coordinates by the radius factor
 //
@@ -142,6 +143,6 @@ void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<
 };
 
 
-
+}
 
 

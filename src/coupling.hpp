@@ -21,7 +21,7 @@
 #include "bitpit_CG.hpp"
 #include "surfunstructured.hpp"
 #include "commons.hpp"
-#include "utils.hpp"
+#include <couplingUtils.hpp>
 
 using namespace bitpit;
 

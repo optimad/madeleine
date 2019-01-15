@@ -14,3 +14,8 @@ _config_local.yml
 .pydevproject
 python-wrapper/*.cpp
 python-wrapper/*.so
+python-wrapper/*.pxd
+python-wrapper/*.c
+*vtu
+*.log
+python-wrapper/cython_debug/*

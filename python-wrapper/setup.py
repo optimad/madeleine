@@ -182,10 +182,10 @@ class build_ext(_build_ext):
                                 language = _language                       ,
                                 extra_objects = _extra_objects             ,
                                 include_dirs = _include_dirs               ,
-                                cython_compile_time_env = _cc_time_env     , 
+                                cython_compile_time_env = _cc_time_env     ,
                     )]
-        #return cythonize(ext_modules)
-        return ext_modules
+        return cythonize(ext_modules,gdb_debug=True)
+        #return ext_modules
 
 
     def run(self):

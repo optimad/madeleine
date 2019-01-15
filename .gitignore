@@ -16,6 +16,8 @@ python-wrapper/*.cpp
 python-wrapper/*.so
 python-wrapper/*.pxd
 python-wrapper/*.c
+python-wrapper/cython_debug/*
+python-wrapper/compilingString.txt
+python-wrapper/exportVariables
 *vtu
 *.log
-python-wrapper/cython_debug/*

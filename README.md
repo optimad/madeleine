@@ -91,5 +91,5 @@ In the ```python-wrapper``` folder, an example, named ```py_example_00002.py``` 
 ```bash
     python py_example_00002.py
 ```
-to launch it. This script reproduce exactly the same computation of the C++ example (```example_00002```)
+to launch it. This script reproduces exactly the same computation of the C++ example (```example_00002```)
 

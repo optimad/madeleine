@@ -10,6 +10,7 @@
 #endif
 
 #include "coupling.hpp"
+#include "couplingUtils.hpp"
 
 using namespace bitpit;
 
@@ -91,15 +92,17 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     \param[in] neutralData the container with data from neutral mesh (data have to be coherent with the mesh)
 */
-void MeshCoupling::compute(PiercedVector<double> & neutralData) {
+void MeshCoupling::compute(PiercedVector<double,long>* neutralData) {
 
+    log::cout() << "First Interpolation" << std::endl;
     writeData(m_scaledNeutralMesh.get(),"neutralInitialization",neutralData,getInputDataNames());
-    interpolateFromTo(m_scaledNeutralMesh.get(),neutralData,m_scaledDisciplineMesh.get(),m_disciplineData);
-    writeData(m_scaledDisciplineMesh.get(),"disciplineAfteInterpolation",m_disciplineData,getOutputDataNames());
+    interpolateFromTo(m_scaledNeutralMesh.get(),neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData);
+    writeData(m_scaledDisciplineMesh.get(),"disciplineAfteInterpolation",&m_disciplineData,getOutputDataNames());
 
 //    for(double & x : m_disciplineData) {
 //        x = (tanh(10.0 * (x - 0.5)) + 1.0) / 2.0;
 //    }
+    log::cout() << "Computation" << std::endl;
     const PiercedVector<Vertex> & vertices = m_scaledDisciplineMesh->getVertices();
     for(const Vertex & v : vertices) {
         darray3 x = v.getCoords();
@@ -110,10 +113,13 @@ void MeshCoupling::compute(PiercedVector<double> & neutralData) {
         *(m_disciplineData.find(v.getId())) = datum;
     }
 
-    writeData(m_scaledDisciplineMesh.get(),"disciplineAfterComputation",m_disciplineData,getOutputDataNames());
+    writeData(m_scaledDisciplineMesh.get(),"disciplineAfterComputation",&m_disciplineData,getOutputDataNames());
 
-    interpolateFromTo(m_scaledDisciplineMesh.get(),m_disciplineData,m_scaledNeutralMesh.get(),neutralData);
+    log::cout() << "Second Interpolation" << std::endl;
+    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),neutralData);
     writeData(m_scaledNeutralMesh.get(),"neutralAfterInterpolation",neutralData,getInputDataNames());
+
+    log::cout() << "Exiting.." << std::endl;
 
 };
 
@@ -155,7 +161,7 @@ const SurfUnstructured* MeshCoupling::getDisciplineMesh(){
 
     \return the scaled neutral mesh
 */
-const SurfUnstructured* MeshCoupling::getNeutralMesh(){
+SurfUnstructured* MeshCoupling::getNeutralMesh(){
 
     return m_scaledNeutralMesh.get();
 

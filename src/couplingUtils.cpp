@@ -5,7 +5,7 @@
  *      Author: marco
  */
 
-#include <couplingUtils.hpp>
+#include "couplingUtils.hpp"
 #include "bitpit_common.hpp"
 #include "bitpit_IO.hpp"
 #include "bitpit_CG.hpp"
@@ -44,14 +44,20 @@ namespace coupling {
     \param[in] toData the interpolated data on the destination mesh
     \return the scaled mesh
 */
-void interpolateFromTo(SurfUnstructured * fromMesh, const PiercedVector<double> & fromData, SurfUnstructured * toMesh, PiercedVector<double> & toData){
+void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * fromData, SurfUnstructured * toMesh, PiercedVector<double> * toData){
+
+    log::cout() << "Build Tree" << std::endl;
 
     SurfaceSkdTree fromTree(fromMesh);
+    log::cout() << "Tree declared" << std::endl;
     fromTree.build();
+
+    log::cout() << "Tree built" << std::endl;
+
 
     const PiercedVector<Vertex> & toVertices = toMesh->getVertices();
     const PiercedVector<Vertex> & fromVertices = fromMesh->getVertices();
-    PiercedVector<double>::iterator toDataItEnd = toData.end();
+    PiercedVector<double>::iterator toDataItEnd = toData->end();
     for (const Vertex & v : toVertices){
 
         // Find closest triangle of Mesh from for each vertex of Mesh to
@@ -66,18 +72,18 @@ void interpolateFromTo(SurfUnstructured * fromMesh, const PiercedVector<double> 
         // Compute barycentric coordinates of the projected vertex of Interpolation Mesh on the closest triangle of Reference Mesh
         darray3 lambda;
         darray3 xP = bitpit::CGElem::projectPointTriangle(x, fromVertices[vIds[0]].getCoords(), fromVertices[vIds[1]].getCoords(), fromVertices[vIds[2]].getCoords(), lambda);
-
+        BITPIT_UNUSED(xP);
         // Interpolate data of Mesh 1 on vertex of Mesh 2
         double data = 0.;
-        data += fromData[vIds[0]]*lambda[0];
-        data += fromData[vIds[1]]*lambda[1];
-        data += fromData[vIds[2]]*lambda[2];
+        data += (*fromData)[vIds[0]]*lambda[0];
+        data += (*fromData)[vIds[1]]*lambda[1];
+        data += (*fromData)[vIds[2]]*lambda[2];
 
         // Update data of Interpolation Mesh
-        PiercedVector<double>::iterator toDataIt = toData.find(v.getId());
+        PiercedVector<double>::iterator toDataIt = toData->find(v.getId());
 
         if( toDataIt == toDataItEnd) {
-            toData.insert(v.getId(), data);
+            toData->insert(v.getId(), data);
             throw std::runtime_error("Warning! New element inserted!");
         }
         else {
@@ -94,7 +100,7 @@ void interpolateFromTo(SurfUnstructured * fromMesh, const PiercedVector<double> 
     \param[in] mesh the mesh
     \return the initialized PiercedVector
 */
-void initDoubleDataOnMesh(const SurfUnstructured * mesh, PiercedVector<double>* data){
+void initDoubleDataOnMesh(SurfUnstructured * mesh, PiercedVector<double>* data){
 
     const PiercedVector<Vertex> & vertices = mesh->getVertices();
     for(const Vertex & v: vertices) {
@@ -127,15 +133,15 @@ void writeMesh(SurfUnstructured * mesh,std::string filename){
     \param[in] data the PiercedVector containing the data to be plotted. NB only one scalar field is allowed
     \param[in] dataNames a list of the field data names. NB its size has to be 1.
 */
-void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<double> & data,const std::vector<std::string> & dataNames){
+void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<double> * data,const std::vector<std::string> & dataNames){
 
     mesh->getVTK().setName(filename);
     vector<double> vdata;
-    vdata.reserve(data.size());
+    vdata.reserve(data->size());
     const PiercedVector<Vertex> & vertices = mesh->getVertices();
     for(const Vertex & v : vertices){
         //vdata.push_back(*(data.find(v.getId())));
-        vdata.push_back(data.at(v.getId()));
+        vdata.push_back(data->at(v.getId()));
     }
     mesh->getVTK().addData(dataNames[0], VTKFieldType::SCALAR, VTKLocation::POINT, vdata);
     mesh->write();

@@ -21,7 +21,6 @@
 #include "bitpit_CG.hpp"
 #include "surfunstructured.hpp"
 #include "commons.hpp"
-#include <couplingUtils.hpp>
 
 using namespace bitpit;
 
@@ -33,11 +32,11 @@ public:
     MeshCoupling();
     MeshCoupling(const vector<std::string> & inputNames, std::vector<std::string> & outputNames);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius);
-    void compute(PiercedVector<double> & neutralData);
+    void compute(PiercedVector<double,long> * neutralData);
     const std::vector<std::string> & getInputDataNames();
     const std::vector<std::string> & getOutputDataNames();
     const SurfUnstructured * getDisciplineMesh();
-    const SurfUnstructured * getNeutralMesh();
+    SurfUnstructured * getNeutralMesh();
     void close();
 
 private:
@@ -47,7 +46,7 @@ private:
     std::unique_ptr<SurfUnstructured> m_scaledDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_scaledNeutralMesh;
 
-    PiercedVector<double> m_disciplineData;
+    PiercedVector<double,long> m_disciplineData;
 
     std::vector<std::string> m_inputDataNames;
     std::vector<std::string> m_outputDataNames;

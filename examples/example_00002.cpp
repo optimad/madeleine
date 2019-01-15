@@ -4,6 +4,7 @@
 #include "surfunstructured.hpp"
 #include "commons.hpp"
 #include "coupling.hpp"
+#include "couplingUtils.hpp"
 #include <exception>
 #if ENABLE_MPI==1
 #include "mpi.h"
@@ -68,7 +69,7 @@ void test00001( int argc, char *argv[] ) {
 
     PiercedVector<double> neutralData;
     coupling::initDoubleDataOnMesh(neutralToDiscipline.getNeutralMesh(),&neutralData);
-    neutralToDiscipline.compute(neutralData);
+    neutralToDiscipline.compute(&neutralData);
 
     neutralToDiscipline.close();
 

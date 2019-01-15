@@ -4,17 +4,17 @@ MIT is a simple C++ interpolation tool based on bitpit with Python bindings.
 MIT provides user with a C++ library for interpolation between two meshes (defined as discipline meshes) via a buffer mesh (defined neutral mesh).
 This library can be used in Python thanks to a Cythonization of the C++ library.
 
-#####C++ library dependencies:
+##### C++ library dependencies:
 - cmake
 - bitpit (compiled as a shared library with flag "-fPIC")
 - MPI (optional)
 
-#####Python wrapping dependencies:
+##### Python wrapping dependencies:
 - Cython
 - Numpy
 - other Python modules: distutils, libc, libcpp, traceback, imp, os, re, sys
 
-#####Configuring C++ library compilation:
+##### Configuring C++ library compilation:
 In MIT's root folder make a building folder, e.g. build
 ```bash
     madeleine$ mkdir build
@@ -42,13 +42,13 @@ C++ examples are compiled if the following bariable is set
 ```bash
     BUILD_EXAMPLES = ON
 ```
-#####Building C++ library:
+##### Building C++ library:
 Once configured the C++ library can be compiled with
 ```bash
     make
 ```
 
-#####C++ library example:
+##### C++ library example:
 If ```BUILD_EXAMPLES``` variable has been set to ```ON```, in ```[build_folder]/example``` an exacutable named ```example_00002``` is produced.
 
 Just move to the above folder and launch it as follows
@@ -63,7 +63,7 @@ The user can customize the example run by providing 2 stl files containing 2 dif
     ./example_00002 /path/to/first/stl/file /path/to/second/stl/file
 ```
 
-#####Building Python wrappers:
+##### Building Python wrappers:
 Once the MIT C++ library has been compiled, in order to build Cythonized Python wrappers, move to the
 ```bash
  python-wrapper
@@ -86,11 +86,10 @@ Optionally
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:[/path/to/bitpit/dynamic/library]:[/path/madeleine/root/folder]/build/src:[/path/to/MPI/library]
 ```
 
-#####Running Python wrappers example:
+##### Running Python wrappers example:
 In the ```python-wrapper``` folder, an example, named ```py_example_00002.py``` is provided. Just simply run
 ```bash
     python py_example_00002.py
 ```
 to launch it. This script reproduce exactly the same computation of the C++ example (```example_00002```)
 
-#####

@@ -114,6 +114,49 @@ void initDoubleDataOnMesh(SurfUnstructured * mesh, PiercedVector<double>* data){
 };
 
 /*!
+    Initialize a mesh-coherent PiercedVector Container with a C-array.
+    It has to be noted that the array should contains data with the same order of the vertices of the associated mesh.
+
+    \param[in] mesh the mesh
+    \param[out] data PiercedVector container associated to the mesh that has to be filled
+    \param[in] array a pointer to a C-array containing data to be inserted into the PiercedVector
+    \param[in] arraySize the size of the C-array
+*/
+void initDataOnMeshFromArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize){
+
+    const PiercedVector<Vertex> & vertices = mesh->getVertices();
+    assert(vertices.size()==arraySize);
+    size_t count = 0;
+    std::cout << "Start inserting ...";
+    for(const Vertex & v: vertices) {
+        data->insert(v.getId(),array[count]);
+        ++count;
+    }
+};
+
+/*!
+    Move data from a mesh-coherent PiercedVector Container to a C-array.
+    It has to be noted that the array will contain data with the same order of the vertices of the associated mesh.
+
+    \param[in] mesh the mesh
+    \param[in] data PiercedVector container associated to the mesh containing data to be inserted into the C-array
+    \param[out] array a pointer to a C-array to be filled with data coming from the PiercedVector
+    \param[in] arraySize the size of the C-array
+*/
+void moveDataOnMeshToArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize){
+
+    const PiercedVector<Vertex> & vertices = mesh->getVertices();
+    assert(vertices.size()==arraySize);
+    size_t count = 0;
+    for(const Vertex & v: vertices) {
+        array[count] = data->at(v.getId());
+        ++count;
+    }
+};
+
+
+
+/*!
     Write VTK file( (p)vtu ) containing the mesh
 
     \param[in] mesh the mesh

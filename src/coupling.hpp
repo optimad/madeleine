@@ -37,6 +37,7 @@ public:
     const std::vector<std::string> & getOutputDataNames();
     const SurfUnstructured * getDisciplineMesh();
     SurfUnstructured * getNeutralMesh();
+    size_t getNeutralMeshSize();
     void close();
 
 private:

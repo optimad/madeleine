@@ -168,6 +168,18 @@ SurfUnstructured* MeshCoupling::getNeutralMesh(){
 };
 
 /*!
+    Get scaled neutral mesh
+
+    \return the scaled neutral mesh
+*/
+size_t MeshCoupling::getNeutralMeshSize(){
+
+    return m_scaledNeutralMesh.get()->getVertices().size();
+
+};
+
+
+/*!
     Possibly perform closing actions
 
 */

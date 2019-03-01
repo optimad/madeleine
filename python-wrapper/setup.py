@@ -141,8 +141,7 @@ class build_ext(_build_ext):
             include_paths.append(self.mpi_include_path)
             os.environ["CXX"] = "mpic++"
             os.environ["CC"] = "mpicc"
-            mpi_lib = "/usr/local/openmpi-1.10.5_intel/lib/libmpi.so"
-            mpi_lib = "/usr/lib64/openmpi-1.10/lib/libmpi.so"
+            mpi_lib = re.sub("/include/","/lib/",self.mpi_include_path) + "libmpi.so"
 
         _extra_compile_args = ["-std=c++11",
                                "-g"        ,

@@ -11,8 +11,7 @@
 
 from gems.core.discipline import MDODiscipline
 import coupling as coupling_interface
-from numpy import array
-
+from numpy import zeros
 
 class ToySphereDiscipline(MDODiscipline):
 
@@ -34,19 +33,20 @@ class ToySphereDiscipline(MDODiscipline):
         self.mesh_coupling.initialize(mesh_file, neutral_mesh_file,
                                       sphere_radius)
 
-        mesh = self.mesh_coupling.getNeutralMesh()
         self.neutral_input = coupling_interface.Py_PiercedVector()
-        self.neutral_output = coupling_interface.Py_PiercedVector()
-
-        coupling_interface.Py_initDoubleDataOnMesh(mesh, self.neutral_input)
-
+        
     def _run(self):
         input_vector = self.local_data[self.inputs[0]]
-        # TOdo : update self.neutral_input from input_data
-        self.neutral_input[:] = input_vector
-        self.sphere_coupling.compute(self.neutral_input, self.neutral_output)
+        
+        mesh = self.mesh_coupling.getNeutralMesh()
+        coupling_interface.Py_initDataOnMeshFromArray(mesh, self.neutral_input,input_vector)
+        self.mesh_coupling.compute(self.neutral_input)
 
-        self.local_data[self.outputs[0]] = array(self.neutral_output)
+        output_vector = zeros(input_vector.shape[0])
+
+        coupling_interface.Py_moveDataOnMeshToArray(mesh, self.neutral_input,output_vector)
+
+        self.local_data[self.outputs[0]] = output_vector
 
     def close(self):
-        self.sphere_coupling.close()
+        self.mesh_coupling.close()

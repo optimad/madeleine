@@ -15,6 +15,7 @@ cdef extern from "coupling.hpp" namespace "coupling":
         void compute(PiercedVector[double,long]*)
         void close()
         const SurfUnstructured * getNeutralMesh()
+        size_t getNeutralMeshSize()
         
 cdef class Py_MeshCoupling:
     cdef MeshCoupling* thisptr
@@ -53,3 +54,6 @@ cdef class Py_MeshCoupling:
         cdef uintptr_t int_ptr = <uintptr_t>(<MeshCoupling*><void*>self.thisptr)[0].getNeutralMesh()
         py_mesh = Py_SharedSurfUnstructured(int_ptr)
         return py_mesh
+
+    def getNeutralMeshSize(self):
+        return (<MeshCoupling*><void*>self.thisptr)[0].getNeutralMeshSize()

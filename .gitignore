@@ -21,3 +21,4 @@ python-wrapper/compilingString.txt
 python-wrapper/exportVariables
 *vtu
 *.log
+*.pyc

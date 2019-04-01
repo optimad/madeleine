@@ -21,7 +21,8 @@ class TestGEMSWrapper(unittest.TestCase):
         toy1 = ToySphereDiscipline("Sphere1", ["Forces"], ["Pressure"], mesh_file,
                                    neutral_mesh_file, sphere_radius=1.0)
 
-        toy1.execute({"Forces": ones(1000)})
+        neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
+        toy1.execute({"Forces": ones(neutral_mesh_size)})
 
         toy1.close()
 

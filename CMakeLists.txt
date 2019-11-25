@@ -240,6 +240,39 @@ if (ENABLE_MPI)
     list (APPEND MADELEINE_EXTERNAL_LIBRARIES "${MPI_CXX_LIBRARIES}")
 endif()
 
+###     METIS/PARMETIS    ########################################
+if (ENABLE_MPI)
+    # ---- parmetis/metis search ---
+    set(PARMETIS_DIR "/usr/parmetis-4.0.3/" CACHE PATH "path to parMETIS installation")
+    set(METIS_DIR "/usr/metis-5.1.0" CACHE PATH "path to METIS installation")
+
+    list(APPEND MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "${METIS_DIR}/include")
+    list(APPEND MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES "${PARMETIS_DIR}/include")
+
+    find_library(METISLIB NAMES "libmetis.so" "libmetis.a" HINTS "${METIS_DIR}/lib")
+    if(NOT METISLIB)
+        unset(METISLIB CACHE)
+        message(FATAL_ERROR "Cannot found any libmetis.so/libmetis.a in METIS lib installation path")
+    endif()
+    list(APPEND MADELEINE_EXTERNAL_LIBRARIES ${METISLIB})
+    unset(METISLIB CACHE)
+
+    find_library(PARMETISLIB NAMES "libparmetis.so" "libparmetis.a" HINTS "${PARMETIS_DIR}/lib")
+    if(NOT PARMETISLIB)
+        unset(PARMETISLIB CACHE)
+        message(FATAL_ERROR "Cannot found any libparmetis.so/libparmetis.a in parMETIS lib installation path")
+    endif()
+    list(APPEND MADELEINE_EXTERNAL_LIBRARIES ${PARMETISLIB})
+    unset(PARMETISLIB CACHE)
+    
+else()
+    UNSET(METIS_DIR CACHE)
+    UNSET(PARMETIS_DIR CACHE)
+endif ()
+
+include_directories(${MADELEINE_EXTERNAL_INCLUDE_DIRECTORIES})
+
+
 #------------------------------------------------------------------------------------#
 # Subdirectories
 #------------------------------------------------------------------------------------#

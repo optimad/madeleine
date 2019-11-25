@@ -10,6 +10,7 @@ if(BUILD_EXAMPLES)
 	# List of examples
 	set(EXAMPLE_LIST "")
         #list(APPEND EXAMPLE_LIST "example_00002")
+        list(APPEND EXAMPLE_LIST "example_parallel_debug")
         list(APPEND EXAMPLE_LIST "example_parallel_00001")
 
 	#Rules to build the examples
@@ -34,6 +35,15 @@ if(BUILD_EXAMPLES)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere1.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere1.stl"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere2.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere2.stl"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere4.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere4.stl"
+    )
+    add_custom_command(
+        TARGET "example_parallel_debug" PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/neutralMeshFilePartitioned_0.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/neutralMeshFilePartitioned_0.dat"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/neutralMeshFilePartitioned_1.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/neutralMeshFilePartitioned_1.dat"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/neutralMeshFilePartitioned_2.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/neutralMeshFilePartitioned_2.dat"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/map_0.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/map_0.dat"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/map_1.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/map_1.dat"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/map_2.dat" "${CMAKE_CURRENT_BINARY_DIR}/data/map_2.dat"
     )
 
 endif()

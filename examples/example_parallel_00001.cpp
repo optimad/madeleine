@@ -1,7 +1,7 @@
 #include "bitpit_common.hpp"
 #include "bitpit_IO.hpp"
 #include "bitpit_CG.hpp"
-#include "surfunstructured.hpp"
+#include "bitpit_surfunstructured.hpp"
 #include "commons.hpp"
 #include "coupling.hpp"
 #include "couplingUtils.hpp"
@@ -126,13 +126,7 @@ int main( int argc, char *argv[] ) {
 
     {
 #endif
-        //try{
-            test00001(argc,argv) ;
-//        }
-//        catch(std::exception & e){
-//            std::cout<<"example_00002 exited with an error of type : "<<e.what()<<std::endl;
-//            return 1;
-//        }
+        test00001(argc,argv) ;
 #if ENABLE_MPI==1
     }
 

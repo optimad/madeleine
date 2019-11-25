@@ -25,6 +25,17 @@ include_directories(${PETSC_INCLUDES})
 
 file(GLOB sources "*.cpp")
 add_library(${MADELEINE_LIBRARY} ${LIBRARY_TYPE} ${sources})
+
+if (ENABLE_MPI)
+        set_target_properties(${MADELEINE_LIBRARY} PROPERTIES DEBUG_POSTFIX "_MPI_D")
+        set_target_properties(${MADELEINE_LIBRARY} PROPERTIES RELWITHDEBINFO_POSTFIX "_MPI_D")
+        set_target_properties(${MADELEINE_LIBRARY} PROPERTIES RELEASE_POSTFIX "_MPI")
+else()
+        set_target_properties(${MADELEINE_LIBRARY} PROPERTIES DEBUG_POSTFIX "_D")
+        set_target_properties(${MADELEINE_LIBRARY} PROPERTIES RELWITHDEBINFO_POSTFIX "_D")
+endif()
+
+
 set_target_properties(${MADELEIN_LIBRARY} PROPERTIES POSITION_INDEPENDENT_CODE ${PIC_FLAG})
 target_link_libraries(${MADELEINE_LIBRARY} ${MADELEINE_EXTERNAL_LIBRARIES})
 

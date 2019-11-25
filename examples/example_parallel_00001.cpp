@@ -21,7 +21,7 @@ void test00001( int argc, char *argv[] ) {
     //
 
     // Initialize input files (default/passed by arguments)
-    std::string disciplineFilemesh = "./data/unitSphere1.stl";
+    std::string disciplineFilemesh = "./data/unitSphere5.stl";
     std::string neutralFilemesh = "./data/unitSphere4.stl";
     if (argc > 2) {
         neutralFilemesh = argv[1];

@@ -35,6 +35,7 @@ if(BUILD_EXAMPLES)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere1.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere1.stl"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere2.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere2.stl"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere4.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere4.stl"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere5.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere5.stl"
     )
     add_custom_command(
         TARGET "example_parallel_debug" PRE_BUILD

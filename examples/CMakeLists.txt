@@ -9,7 +9,8 @@ option(BUILD_EXAMPLES "Create and install the examples" OFF)
 if(BUILD_EXAMPLES)
 	# List of examples
 	set(EXAMPLE_LIST "")
-        list(APPEND EXAMPLE_LIST "example_00002")
+        #list(APPEND EXAMPLE_LIST "example_00002")
+        list(APPEND EXAMPLE_LIST "example_parallel_00001")
 
 	#Rules to build the examples
 	foreach(EXAMPLE_NAME IN LISTS EXAMPLE_LIST)
@@ -29,7 +30,7 @@ if(BUILD_EXAMPLES)
 
     # Data files
     add_custom_command(
-        TARGET "example_00002" PRE_BUILD
+        TARGET "example_parallel_00001" PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere1.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere1.stl"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/data/unitSphere2.stl" "${CMAKE_CURRENT_BINARY_DIR}/data/unitSphere2.stl"
     )

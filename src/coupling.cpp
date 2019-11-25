@@ -12,6 +12,7 @@
 
 #include "coupling.hpp"
 #include "couplingUtils.hpp"
+#include <fstream>
 
 using namespace bitpit;
 
@@ -592,39 +593,43 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
 */
 void MeshCoupling::dynamicPartitionNeutralMeshByDiscipline() {
 
-    std::unordered_map<long,int> testCellPerRank;
-    for(SurfUnstructured::CellIterator cell =  m_unitNeutralMesh->internalBegin(); cell != m_unitNeutralMesh->internalEnd(); ++cell) {
-        testCellPerRank[cell.getId()] = m_rank;
-    }
-
-    if(m_rank == 0){
-        testCellPerRank[53] = 1;
-    }
-
-    if(m_rank == 1){
-        testCellPerRank[54] = 0;
-    }
-
-//    for(int r = 0; r < m_nprocs; ++r) {
-//        if(m_rank == r) {
-//            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
-//                if(cell.isInterior()) {
-//                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << std::endl;
-//                } else {
-//                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << std::endl;
-//                }
-//                std::cout << std::flush;
-//            }
+//    std::stringstream dumpFileStringStream;
+//    dumpFileStringStream << "neutralMeshFilePartitioned_" << m_rank << ".dat";
+//    std::ofstream dumpStream;
+//    dumpStream.open(dumpFileStringStream.str().c_str());
+//    m_unitNeutralMesh->dump(dumpStream);
+//    dumpStream.close();
+//    std::stringstream mapStringStream;
+//    mapStringStream << "map_" << m_rank << ".dat";
+//    std::ofstream mapStream;
+//    mapStream.open(mapStringStream.str().c_str());
 //
-//        }
-//        MPI_Barrier(m_comm);
-//        std::cout << std::flush;
+//    for(auto & elem : m_neutralFile2DisciplineCellPerRanks) {
+//        mapStream << elem.first << " " << elem.second << std::endl;
 //    }
+//
+//    mapStream.close();
+
+    for(int r = 0; r < m_nprocs; ++r) {
+        if(m_rank == r) {
+            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
+                if(cell.isInterior()) {
+                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                } else {
+                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                }
+                std::cout << std::flush;
+            }
+
+        }
+        MPI_Barrier(m_comm);
+        std::cout << std::flush;
+    }
 
 
-    //std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(testCellPerRank,false,false);
     std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(m_neutralFile2DisciplineCellPerRanks,true,false);
     //DEBUG
+
     std::string name("disciplinePartitionedNeutral");
 
     for(int r = 0; r < m_nprocs; ++r) {

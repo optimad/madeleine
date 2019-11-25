@@ -24,6 +24,9 @@ void initDataOnMeshFromArray(SurfUnstructured * mesh, PiercedVector<double>* dat
 void moveDataOnMeshToArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize);
 void writeMesh(SurfUnstructured * mesh,std::string filename);
 void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<double> * data,const std::vector<std::string> & dataNames);
+#if ENABLE_MPI==1
+void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & idRank,MPI_Comm comm = MPI_COMM_WORLD);
+#endif
 }
 #endif /* SRC_COUPLINGUTILS_HPP_ */
 

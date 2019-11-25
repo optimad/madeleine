@@ -50,7 +50,7 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * from
 
     SurfaceSkdTree fromTree(fromMesh);
     log::cout() << "Tree declared" << std::endl;
-    fromTree.build();
+    fromTree.build(1);
 
     log::cout() << "Tree built" << std::endl;
 
@@ -179,7 +179,7 @@ void writeMesh(SurfUnstructured * mesh,std::string filename){
 void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<double> * data,const std::vector<std::string> & dataNames){
 
     mesh->getVTK().setName(filename);
-    vector<double> vdata;
+    std::vector<double> vdata;
     vdata.reserve(data->size());
     const PiercedVector<Vertex> & vertices = mesh->getVertices();
     for(const Vertex & v : vertices){
@@ -189,6 +189,70 @@ void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<
     mesh->getVTK().addData(dataNames[0], VTKFieldType::SCALAR, VTKLocation::POINT, vdata);
     mesh->write();
 
+};
+
+/*!
+    Compute an ordered mesh partitioning, filling an empty long array (provided by the user) with the cell indices to be assigned to each rank.
+    The cell numbering is given by the ordering in the mesh file. CAVEAT: The maximum global number of cells is bounded to 2 billions, due to the use of INT.
+    bitpit can manage more cells by using special MPI datatype.
+
+    \param[in] meshFile the file containing the mesh
+    \param[in] comm the communicator used to partition the mesh
+    \param[out] cellSizesPerRank a pointer to an empty long array provided by the user and filled with the cell indices for each rank.
+*/
+void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & idRanks,MPI_Comm comm){
+
+    //Ask communicator for its size
+    int nofRanks;
+    int rank;
+    MPI_Comm_size(comm,&nofRanks);
+    MPI_Comm_rank(comm,&rank);
+
+    std::vector<int> sizes(nofRanks,0);
+    int nofCells = 0;
+    if(rank == 0){
+        //Rank 0 reads mesh file and counts the cells
+        SurfUnstructured mesh(2,3);
+        mesh.importSTL(meshFile);
+        mesh.deleteCoincidentVertices();
+        nofCells = mesh.getCellCount();
+
+        //Rank 0 compute the number of cells per rank
+        int integerDivision = nofCells / nofRanks;
+        int divisionReminder = nofCells % nofRanks;
+        for(int r = 0; r < nofRanks; ++r) {
+            sizes[r] = integerDivision;
+        }
+        for(int i = 0; i < divisionReminder; ++i) {
+            ++sizes[i];
+        }
+
+        idRanks.resize(nofCells,0);
+        int count = 0;
+        for(int r = 0; r < nofRanks; ++r) {
+            for(int i = 0; i < sizes[r]; ++i){
+                idRanks[count] = r;
+                ++count;
+            }
+        }
+    }
+
+    //Rank 0 broadcast nofCells
+    MPI_Bcast(&nofCells,1,MPI_INT,0,comm);
+    idRanks.resize(nofCells,0);
+    MPI_Bcast(idRanks.data(),nofCells,MPI_INT,0,comm);
+
+//    //DEBUG
+//    for(int r = 0; r < nofRanks; ++r) {
+//        if(rank == r) {
+//            std::cout << "I'm rank " << rank << " and my idRanks is : " << std::endl;
+//            for(int i = 0; i < nofCells; ++i) {
+//                std::cout << "id " << i << " -> rank " << idRanks[i] << std::endl;
+//            }
+//        }
+//        MPI_Barrier(comm);
+//    }
+//    //DEBUG
 };
 
 

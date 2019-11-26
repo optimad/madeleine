@@ -118,78 +118,11 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
 
 
-//    //Compute the neutral ids/ranks map to get neutral rank sub-domains overlapping the discipline ones with the same rank
-//    computeGlobalNeutralId2DisciplineRank();
-//
-//
-//    //TODO prepare cellRanks per discipline
-//
-    for(const Cell & cell : m_unitDisciplineMesh->getCells()) {
-        if(cell.isInterior()) {
-            long id =  cell.getId();
-            int rank = m_globalDisciplineId2NeutralRank[id];
-            if(rank != m_rank) {
-                m_discipline2FileNeutralCellPerRanks[id] = rank;
-            }
-        }
-    }
-    std::cout << "Rank " << m_rank << " m_discipline2FileNeutralCellPerRanks size " << m_discipline2FileNeutralCellPerRanks.size() << std::endl;
-//
-    //DEBUG
+    buildScaledMeshes();
 
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(m_rank == r) {
-            for(auto idRank : m_discipline2FileNeutralCellPerRanks) {
-                long id = idRank.first;
-                int rank = idRank.second;
-                std::cout << "map Rank " << m_rank << " id " << id << " rank " << rank << std::endl;
-                std::cout << std::flush;
-            }
-//            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
-//                if(cell.isInterior()) {
-//                    std::cout << "interior Rank " << m_rank << " id " << cell.getId() << std::endl;
-//                } else {
-//                    std::cout << "ghost Rank " << m_rank << " id " << cell.getId() << std::endl;
-//                }
-//                std::cout << std::flush;
-//            }
-
-        }
-        MPI_Barrier(m_comm);
-        std::cout << std::flush;
-    }
-//
-//    //DEBUG
-//
-//    //TODO partiziona neutrale come disciplina
-//    dynamicPartitionNeutralMeshByDiscipline();
-//
-//
-//    //TODO prepara cellRanks per neutrale da disciplina a file
-//    //TODO partiziona neutrale come file
-//
-//    //TODO scala griglie
 //
 //    //Inizializza dati in parallelo
 
-
-//    //DEBUG
-//    for(int r = 0; r < m_nprocs; ++r) {
-//        if(m_rank == r) {
-//            for(int i = 0; i < nofCellsNeutral; ++i) {
-//                std::cout << "My rank: " << m_rank << " Id: " << i << " cell center: "
-//                        << cellCentersNeutral[i * 3] << " " << cellCentersNeutral[i * 3 + 1] << " " << cellCentersNeutral[i * 3 + 2] << " "
-//                        << " on discpline rank partition: " << m_globalNeutralId2DisciplineRank[i] << std::endl;
-//            }
-//            std::cout << std::flush;
-//        }
-//        MPI_Barrier(m_comm);
-//        std::cout << std::flush;
-//    }
-//    //DEBUG
-
-
-    //m_scaledDisciplineMesh = PatchKernel::clone(m_unitDisciplineMesh.get());
 #else
     m_unitDisciplineMesh->reset();
     m_disciplineData.clear(true);
@@ -198,44 +131,6 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_scaledDisciplineMesh = PatchKernel::clone(m_unitDisciplineMesh.get());
 #endif
 
-
-
-
-
-
-//
-//    PiercedVector<Vertex> & scaledDisciplineVertices = m_scaledDisciplineMesh->getVertices();
-//
-//
-//    //initialize discipline data structure and resize the unit sphere, scaling its vertices
-//    for(Vertex & v : scaledDisciplineVertices) {
-//        v.setCoords(v.getCoords()*radius);
-//        m_disciplineData.insert(v.getId(),0.0);
-//    }
-//
-//    //initialize neutral mesh and vertices container
-//    m_unitNeutralMesh->reset();
-//    m_unitNeutralMesh->importSTL(unitNeutralMeshFile);
-//    m_unitNeutralMesh->deleteCoincidentVertices();
-//    m_scaledNeutralMesh = PatchKernel::clone(m_unitNeutralMesh.get());
-//    PiercedVector<Vertex> & scaledNeutralVertices = m_scaledNeutralMesh->getVertices();
-//
-//    //resize the neutral unit sphere mesh, scaling its vertices
-//    for(Vertex & v : scaledNeutralVertices) {
-//        v.setCoords(v.getCoords()*radius);
-//    }
-//
-//    //print at log output vertices and cells of the discipline and neutral meshes
-//    log::cout() << " Discipline Mesh n vertices : " << m_unitDisciplineMesh->getVertexCount() << std::endl;
-//    log::cout() << " Discipline Mesh n cells : " << m_unitDisciplineMesh->getInternalCount() << std::endl;
-//    log::cout() << " Neutral Mesh n vertices : " << m_unitNeutralMesh->getVertexCount() << std::endl;
-//    log::cout() << " Neutral Mesh n cells : " << m_unitNeutralMesh->getInternalCount() << std::endl;
-//
-//    //print on VTK files both discipline and neutral meshes
-//    std::string disciplineMeshVTKFileName = "disciplineMesh";
-//    std::string neutralMeshVTKFileName = "neutralMesh";
-//    writeMesh(m_scaledDisciplineMesh.get(),disciplineMeshVTKFileName);
-//    writeMesh(m_scaledNeutralMesh.get(),neutralMeshVTKFileName);
 
 };
 

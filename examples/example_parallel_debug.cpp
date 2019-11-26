@@ -33,6 +33,8 @@ void test00002( int argc, char *argv[] ) {
     std::ifstream meshStream;
     meshStream.open(meshDump.str().c_str());
     mesh.restore(meshStream);
+    std::string meshIn("meshbefore");
+    mesh.write(meshIn);
 
     std::stringstream mapFile;
     mapFile << "data/map_" << rank << ".dat";
@@ -52,7 +54,7 @@ void test00002( int argc, char *argv[] ) {
 //    }
 
     std::vector<adaption::Info> partitionInfo = mesh.partition(map,true,false);
-    std::string meshOut("mesh");
+    std::string meshOut("meshafter");
     mesh.write(meshOut);
 }
 

@@ -99,35 +99,41 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_globalNeutralId2MeshFileRank = globalNeutralId2MeshFileRank;
 
 #if ENABLE_MPI==1
-    //Read and partition the unit discipline mesh by using metis
+    //Read the unit meshes
     readUnitDisciplineMesh();
-    staticPartitionDisciplineMeshByMetis();
-
-    //Read but not partition the unit neutral mesh
     readUnitNeutralMesh();
-
-    //Compute the neutral ids/ranks map to get neutral rank sub-domains overlapping the discipline ones with the same rank
-    computeGlobalNeutralId2DisciplineRank();
 
     //Partition the neutral mesh by mesh file order
     staticPartitionNeutralMeshByMeshFileOrder();
 
-    //TODO prepare cellRanks per neutrale da file a disciplina
+    //Compute the discipline ids/ranks map to get discipline rank sub-domains overlapping the neutral ones with the same rank
+    computeGlobalDisciplineId2NeutralRank();
 
-    for(const Cell & cell : m_unitNeutralMesh->getCells()) {
+
+
+
+//    //Compute the neutral ids/ranks map to get neutral rank sub-domains overlapping the discipline ones with the same rank
+//    computeGlobalNeutralId2DisciplineRank();
+//
+//
+//    //TODO prepare cellRanks per discipline
+//
+    for(const Cell & cell : m_unitDisciplineMesh->getCells()) {
         if(cell.isInterior()) {
             long id =  cell.getId();
-            int rank = m_globalNeutralId2DisciplineRank[id];
+            int rank = m_globalDisciplineId2NeutralRank[id];
             if(rank != m_rank) {
-                m_neutralFile2DisciplineCellPerRanks[id] = rank;
+                m_discipline2FileNeutralCellPerRanks[id] = rank;
             }
         }
     }
-
+    std::cout << "Rank " << m_rank << " m_discipline2FileNeutralCellPerRanks size " << m_discipline2FileNeutralCellPerRanks.size() << std::endl;
+//
     //DEBUG
+
     for(int r = 0; r < m_nprocs; ++r) {
         if(m_rank == r) {
-            for(auto idRank : m_neutralFile2DisciplineCellPerRanks) {
+            for(auto idRank : m_discipline2FileNeutralCellPerRanks) {
                 long id = idRank.first;
                 int rank = idRank.second;
                 std::cout << "map Rank " << m_rank << " id " << id << " rank " << rank << std::endl;
@@ -146,19 +152,19 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
         MPI_Barrier(m_comm);
         std::cout << std::flush;
     }
-
-    //DEBUG
-
-    //TODO partiziona neutrale come disciplina
-    dynamicPartitionNeutralMeshByDiscipline();
-
-
-    //TODO prepara cellRanks per neutrale da disciplina a file
-    //TODO partiziona neutrale come file
-
-    //TODO scala griglie
-
-    //Inizializza dati in parallelo
+//
+//    //DEBUG
+//
+//    //TODO partiziona neutrale come disciplina
+//    dynamicPartitionNeutralMeshByDiscipline();
+//
+//
+//    //TODO prepara cellRanks per neutrale da disciplina a file
+//    //TODO partiziona neutrale come file
+//
+//    //TODO scala griglie
+//
+//    //Inizializza dati in parallelo
 
 
 //    //DEBUG
@@ -341,11 +347,10 @@ void MeshCoupling::readUnitDisciplineMesh() {
         //m_disciplineData.clear(true);
         m_unitDisciplineMesh->importSTL(m_disciplineMeshFileName);
         m_unitDisciplineMesh->deleteCoincidentVertices();
+        std::cout << "Discipline number of cells = " << m_unitDisciplineMesh->getCellCount() << std::endl;
     }
-#if ENABLE_MPI==1
-    //Set communicator in discipline mesh
-    m_unitDisciplineMesh->setCommunicator(m_comm);
-#endif
+    m_unitDisciplineMesh->buildAdjacencies();
+
 }
 
 /*!
@@ -358,6 +363,7 @@ void MeshCoupling::readUnitNeutralMesh() {
     if(m_rank == 0) {
         m_unitNeutralMesh->importSTL(m_neutralMeshFileName);
         m_unitNeutralMesh->deleteCoincidentVertices();
+        std::cout << "Neutral number of cells = " << m_unitNeutralMesh->getCellCount() << std::endl;
     }
     m_unitNeutralMesh->buildAdjacencies();
 }
@@ -587,6 +593,115 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
     MPI_Allreduce(MPI_IN_PLACE,m_globalNeutralId2DisciplineRank.data(),nofCellsNeutral,MPI_INT,MPI_MAX,m_comm);
 
 }
+
+/*!
+    Compute a global map ids->ranks for the discipline mesh in order to partition the discipline mesh
+    with rank sub-domains overlapping the neutral sub-domains with the same rank.
+*/
+void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
+    //Map the neutral rank distribution on discipline mesh
+    //Rank 0 communicate discipline mesh ids and cell centers to the other ranks
+    long *idxDiscipline = nullptr; //ordered by discipline mesh id
+    double * cellCentersDiscipline = nullptr; //ordered by discipline mesh id
+    int nofCellsDiscipline = 0;
+    if(m_rank == 0) {
+        nofCellsDiscipline = m_unitDisciplineMesh->getCellCount();
+        idxDiscipline = new long[nofCellsDiscipline];
+        cellCentersDiscipline = new double[nofCellsDiscipline * 3];
+        for(auto cell : m_unitDisciplineMesh->getCells()) {
+            long id = cell.getId();
+            const std::array<double,3> & cellCenter = m_unitDisciplineMesh->evalCellCentroid(id);
+            idxDiscipline[id] = id;
+            for(int i = 0; i < 3; ++i) {
+                cellCentersDiscipline[id * 3 + i] = cellCenter[i];
+            }
+        }
+    }
+    MPI_Bcast(&nofCellsDiscipline,1,MPI_INT,0,m_comm);
+    if(m_rank != 0) {
+        idxDiscipline = new long[nofCellsDiscipline];
+        cellCentersDiscipline = new double [nofCellsDiscipline * 3];
+    }
+    MPI_Bcast(idxDiscipline,nofCellsDiscipline,MPI_LONG,0,m_comm);
+    MPI_Bcast(cellCentersDiscipline,3*nofCellsDiscipline,MPI_DOUBLE,0,m_comm);
+
+    //DEBUG
+//    for(int r = 0; r < m_nprocs; ++r) {
+//        if(r==m_rank) {
+//            for(int i = 0; i < nofCellsDiscipline; ++i) {
+//                std::cout << "id: " << idxDiscipline[i] << " - cell center: ";
+//                for(int j = 0; j < 3; ++j) {
+//                    std::cout << cellCentersDiscipline[i * 3 + j] << " ";
+//                }
+//                std::cout << std::endl;
+//            }
+//        }
+//        MPI_Barrier(m_comm);
+//    }
+    //DEBUG
+
+    //Project rank from neutral partition to cellRanks for discipline mesh
+    //Build neutral mesh surface skd tree
+    SurfaceSkdTree neutralTree(m_unitNeutralMesh.get());
+    log::cout() << "Tree declared" << std::endl;
+    neutralTree.build(1);
+    //Initialiaze rank maps - array ordered by id and containing ranks
+    m_globalDisciplineId2NeutralRank.resize(nofCellsDiscipline,-1);
+    std::vector<int> candidates(nofCellsDiscipline,-1);
+    //Loop over discipline cell center and check the neutral cell the discipline cell center belong to. Assign rank according to
+    std::array<double,3> tempCellCenter;
+    darray3 lambda;
+    darray3 xP;
+    bitpit::utils::DoubleFloatingEqual checkFloating;
+    for(int i = 0; i < nofCellsDiscipline; ++i) {
+        BITPIT_UNUSED(xP);
+        for(int j = 0; j < 3; ++j) {
+            tempCellCenter[j] = cellCentersDiscipline[i * 3 + j];
+        }
+        //compute closest cell distance
+        long id;
+        double closestCellDist = 0.0, closestCellPlaneDist = 0.0;
+        neutralTree.findPointClosestCell(tempCellCenter, &id, &closestCellDist);
+        //compute closest cell plane distance
+        if(i == 10) {
+            std::cout << "Rank " << m_rank << " cc " << std::setprecision(20)<< tempCellCenter << " closest cell dist " << std::setprecision(20) << closestCellDist<< std::endl;
+        }
+        if(m_unitNeutralMesh->getCell(id).isInterior()) {
+            closestCellPlaneDist = bitpit::CGElem::distancePointPlane(tempCellCenter,
+                    m_unitNeutralMesh->getCellVertexCoordinates(id)[0],m_unitNeutralMesh->evalFacetNormal(id),xP);
+            if(checkFloating(closestCellDist,closestCellPlaneDist)) {
+                m_globalDisciplineId2NeutralRank[i] = m_rank;
+            } else {
+                candidates[i] = m_rank;
+            }
+        }
+    }
+    //Reduce disciplineMappedRankForNeutral on Rank 0 for static partitioning
+    MPI_Allreduce(MPI_IN_PLACE,m_globalDisciplineId2NeutralRank.data(),nofCellsDiscipline,MPI_INT,MPI_MAX,m_comm);
+    MPI_Allreduce(MPI_IN_PLACE,candidates.data(),nofCellsDiscipline,MPI_INT,MPI_MAX,m_comm);
+    //check cellcenters candidates
+    for(int c = 0; c < nofCellsDiscipline; ++c) {
+        if(m_globalDisciplineId2NeutralRank[c] == -1) {
+            m_globalDisciplineId2NeutralRank[c] = candidates[c];
+        }
+    }
+
+
+    //DEBUG
+    for(int r = 0; r < m_nprocs; ++r) {
+        if(r==m_rank) {
+            for(int i = 0; i < m_globalDisciplineId2NeutralRank.size(); ++i) {
+                std::cout << "id: " << i << " - rank: " << m_globalDisciplineId2NeutralRank[i];
+                std::cout << std::endl;
+            }
+        }
+        MPI_Barrier(m_comm);
+    }
+    //DEBUG
+
+}
+
+
 
 /*!
     Dynamically partition neutral mesh by discipline partitioning

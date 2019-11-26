@@ -55,7 +55,7 @@ private:
     void dynamicPartitionNeutralMeshByDiscipline();
 
     void computeGlobalNeutralId2DisciplineRank();
-
+    void computeGlobalDisciplineId2NeutralRank();
 
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
@@ -78,9 +78,11 @@ private:
     int m_nprocs;
     int m_rank;
     std::vector<int> m_globalNeutralId2DisciplineRank;
+    std::vector<int> m_globalDisciplineId2NeutralRank;
     std::vector<int> m_globalNeutralId2MeshFileRank;
     std::unordered_map<long,int> m_neutralFile2DisciplineCellPerRanks;
     std::unordered_map<long,int> m_neutralDiscipline2FileCellPerRanks;
+    std::unordered_map<long,int> m_discipline2FileNeutralCellPerRanks;
 #endif
 
 };

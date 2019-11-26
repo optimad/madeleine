@@ -103,6 +103,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     readUnitDisciplineMesh();
     readUnitNeutralMesh();
 
+    std::unique_ptr<SurfUnstructured> serialNeutralMesh = PatchKernel::clone(m_unitNeutralMesh.get());
+
     //Partition the neutral mesh by mesh file order
     staticPartitionNeutralMeshByMeshFileOrder();
 

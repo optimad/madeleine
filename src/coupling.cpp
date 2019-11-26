@@ -58,6 +58,10 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     MPI_Comm_rank(MPI_COMM_WORLD,&worldRank);
     std::cout << "I'm " << m_rank << " of " << m_nprocs  << " on " << workersName  << " and " << worldRank << " of " << worldSize << " on " << worldName << std::endl;
     //DEBUG
+
+#else
+    m_rank = 0;
+    m_nprocs = 1;
 #endif
 };
 

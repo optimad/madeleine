@@ -444,21 +444,6 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
     MPI_Bcast(idxNeutral,nofCellsNeutral,MPI_LONG,0,m_comm);
     MPI_Bcast(cellCentersNeutral,3*nofCellsNeutral,MPI_DOUBLE,0,m_comm);
 
-    //    //DEBUG
-    //    for(int r = 0; r < m_nprocs; ++r) {
-    //        if(r==m_rank) {
-    //            for(int i = 0; i < nofCells; ++i) {
-    //                std::cout << "id: " << idx[i] << " - cell center: ";
-    //                for(int j = 0; j < 3; ++j) {
-    //                    std::cout << cellCenters[i * 3 + j] << " ";
-    //                }
-    //                std::cout << std::endl;
-    //            }
-    //        }
-    //        MPI_Barrier(m_comm);
-    //    }
-    //    //DEBUG
-
     //Project rank from discipline partition to cellRanks for neutral mesh
     //Build discipline mesh surface skd tree
     SurfaceSkdTree disciplineTree(m_unitDisciplineMesh.get());
@@ -564,9 +549,6 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
         double closestCellDist = 0.0, closestCellPlaneDist = 0.0;
         neutralTree.findPointClosestCell(tempCellCenter, &id, &closestCellDist);
         //compute closest cell plane distance
-        if(i == 10) {
-            std::cout << "Rank " << m_rank << " cc " << std::setprecision(20)<< tempCellCenter << " closest cell dist " << std::setprecision(20) << closestCellDist<< std::endl;
-        }
         if(m_unitNeutralMesh->getCell(id).isInterior()) {
             closestCellPlaneDist = bitpit::CGElem::distancePointPlane(tempCellCenter,
                     m_unitNeutralMesh->getCellVertexCoordinates(id)[0],m_unitNeutralMesh->evalFacetNormal(id),xP);
@@ -588,17 +570,11 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
     }
 
 
-    //DEBUG
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(r==m_rank) {
-            for(int i = 0; i < m_globalDisciplineId2NeutralRank.size(); ++i) {
-                std::cout << "id: " << i << " - rank: " << m_globalDisciplineId2NeutralRank[i];
-                std::cout << std::endl;
+/*!
             }
         }
-        MPI_Barrier(m_comm);
     }
-    //DEBUG
+    std::cout << "Rank " << m_rank << " m_discipline2FileNeutralCellPerRanks size " << m_discipline2FileNeutralCellPerRanks.size() << std::endl;
 
 }
 

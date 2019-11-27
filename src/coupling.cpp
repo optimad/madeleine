@@ -677,6 +677,30 @@ void MeshCoupling::staticPartitionDisciplineMeshByNeutralFile() {
 }
 
 /*!
+    Set scaled meshes
+*/
+void MeshCoupling::buildScaledMeshes() {
+
+    std::cout << "Radius: " << m_radius << std::endl;
+    //discipline
+    m_scaledDisciplineMesh = PatchKernel::clone(m_unitDisciplineMesh.get());
+    //m_scaledDisciplineMesh->scale(m_radius);
+    PiercedVector<Vertex> & disciplineVertices = m_scaledDisciplineMesh->getVertices();
+    std::array<double,3> origin = {{0.0,0.0,0.0}};
+    std::array<double,3> scaling = {{m_radius,m_radius,m_radius}};
+    for(Vertex &v : disciplineVertices) {
+        v.scale(scaling,origin);
+    }
+
+    //neutral
+    m_scaledNeutralMesh = PatchKernel::clone(m_unitNeutralMesh.get());
+    PiercedVector<Vertex> & neutralVertices = m_scaledNeutralMesh->getVertices();
+    for(Vertex & v : neutralVertices) {
+        v.scale(scaling,origin);
+    }
 
 }
+
 }
+
+

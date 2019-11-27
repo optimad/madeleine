@@ -54,6 +54,7 @@ private:
     void computeGlobalDisciplineId2NeutralRank(); //compute global vector to get D_Nf
     void computeDiscipline2FileNeutralCellPerRanks(); // compute local vector to get D_Nf
 
+    void buildScaledMeshes();
 
     void computeGlobalNeutralId2DisciplineRank(SurfUnstructured *serialNeutralMesh); //compute global vector to get N_{D_Nf}
 

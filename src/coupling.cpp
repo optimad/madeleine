@@ -121,6 +121,9 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     computeGlobalNeutralId2DisciplineRank(serialNeutralMesh.get()); // compute N_{D_Nf}
 
+    computeNeutralId2DisciplineCellPerRanks(); //compute dynamic m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks: from Nf to N_{D_Nf}
+
+
     buildScaledMeshes();
 
 //

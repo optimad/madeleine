@@ -598,6 +598,24 @@ void MeshCoupling::computeDiscipline2FileNeutralCellPerRanks() {
 
 }
 
+/*!
+    Compute a local map ids->ranks for the neutral mesh in order to partition the neutral mesh
+    with rank sub-domains overlapping the discipline sub-domains with the same rank.
+*/
+
+void MeshCoupling::computeNeutralId2DisciplineCellPerRanks() {
+
+    for(const Cell & cell : m_unitNeutralMesh->getCells()) {
+        if(cell.isInterior()) {
+            long id = cell.getId();
+            int rank = m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank[id];
+            if(rank != m_rank) {
+                m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks[id] = rank;
+            }
+        }
+    }
+    std::cout << "Rank " << m_rank << " m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks size " << m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks.size() << std::endl;
+}
 
 /*!
     Dynamically partition neutral mesh by discipline partitioning

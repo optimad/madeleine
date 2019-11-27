@@ -89,6 +89,7 @@ private:
     std::vector<int> m_globalDisciplineId2NeutralMeshFileRank;                               //global vector to build discipline cellPerRank to get partitioning overlapping neutral mesh file partitioning (D_Nf)
     std::vector<int> m_globalNeutralId2MeshFileRank;                                         //computed outside this class. Useful to build cellPerRanks to get neutral mesh file partitioning (Nf)
     std::unordered_map<long,int> m_discipline2FileNeutralCellPerRanks;                       //local map to partition the discipline mesh overlapping the neutral mesh file partitioning
+    std::unordered_map<long,int> m_disciplineId2NeutralMeshFileCellPerRanks;                    //(D_Nf)     local map to partition the discipline mesh overlapping the neutral mesh file partitioning. It depends on the starting discipline mesh partitioning
 
     //oldies
     std::unordered_map<long,int> m_neutralFile2DisciplineCellPerRanks;

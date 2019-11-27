@@ -589,11 +589,11 @@ void MeshCoupling::computeDiscipline2FileNeutralCellPerRanks() {
             long id =  cell.getId();
             int rank = m_globalDisciplineId2NeutralMeshFileRank[id];
             if(rank != m_rank) {
-                m_discipline2FileNeutralCellPerRanks[id] = rank;
+                m_disciplineId2NeutralMeshFileCellPerRanks[id] = rank;
             }
         }
     }
-    std::cout << "Rank " << m_rank << " m_discipline2FileNeutralCellPerRanks size " << m_discipline2FileNeutralCellPerRanks.size() << std::endl;
+    std::cout << "Rank " << m_rank << " m_disciplineId2NeutralMeshFileCellPerRanks size " << m_disciplineId2NeutralMeshFileCellPerRanks.size() << std::endl;
 
 
 }
@@ -669,7 +669,7 @@ void MeshCoupling::dynamicPartitionNeutralMeshByDiscipline() {
 void MeshCoupling::staticPartitionDisciplineMeshByNeutralFile() {
 
     m_unitDisciplineMesh->setCommunicator(m_comm);
-    std::vector<adaption::Info> partitionInfo = m_unitDisciplineMesh->partition(m_discipline2FileNeutralCellPerRanks,true,false);
+    std::vector<adaption::Info> partitionInfo = m_unitDisciplineMesh->partition(m_disciplineId2NeutralMeshFileCellPerRanks,true,false);
     //DEBUG
     std::string name = "fileNeutralPartitionedDiscipline";
     m_unitDisciplineMesh->write(name);

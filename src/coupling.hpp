@@ -49,9 +49,14 @@ private:
     void readUnitDisciplineMesh();
     void readUnitNeutralMesh();
     void staticPartitionNeutralMeshByMeshFileOrder(); //partitioning Nf
+    void staticPartitionDisciplineMeshByNeutralFile(); //partitioning D_Nf
 
-    void computeGlobalNeutralId2DisciplineRank();
-    void computeGlobalDisciplineId2NeutralRank();
+    void computeGlobalDisciplineId2NeutralRank(); //compute global vector to get D_Nf
+    void computeDiscipline2FileNeutralCellPerRanks(); // compute local vector to get D_Nf
+
+
+    void computeGlobalNeutralId2DisciplineRank(SurfUnstructured *serialNeutralMesh); //compute global vector to get N_{D_Nf}
+
 
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
@@ -79,12 +84,14 @@ private:
     MPI_Comm m_comm;
     int m_nprocs;
     int m_rank;
-    std::vector<int> m_globalNeutralId2DisciplineRank;
-    std::vector<int> m_globalDisciplineId2NeutralRank;
-    std::vector<int> m_globalNeutralId2MeshFileRank;
+    std::vector<int> m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank;             //global vector to build neutral cellPerRank to get partitioning overlapping the discipline neutral mesh file partitioning (N_{D_Nf})
+    std::vector<int> m_globalDisciplineId2NeutralMeshFileRank;                               //global vector to build discipline cellPerRank to get partitioning overlapping neutral mesh file partitioning (D_Nf)
+    std::vector<int> m_globalNeutralId2MeshFileRank;                                         //computed outside this class. Useful to build cellPerRanks to get neutral mesh file partitioning (Nf)
+    std::unordered_map<long,int> m_discipline2FileNeutralCellPerRanks;                       //local map to partition the discipline mesh overlapping the neutral mesh file partitioning
+
+    //oldies
     std::unordered_map<long,int> m_neutralFile2DisciplineCellPerRanks;
-    std::unordered_map<long,int> m_neutralDiscipline2FileCellPerRanks;
-    std::unordered_map<long,int> m_discipline2FileNeutralCellPerRanks;
+
 #endif
 
 };

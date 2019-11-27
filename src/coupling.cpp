@@ -115,8 +115,11 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     //Compute the discipline ids/ranks map to get discipline rank sub-domains overlapping the neutral ones with the same rank
     computeGlobalDisciplineId2NeutralRank();
 
+    computeDiscipline2FileNeutralCellPerRanks(); //compute static m_discipline2FileNeutralCellPerRanks
 
+    staticPartitionDisciplineMeshByNeutralFile();
 
+    computeGlobalNeutralId2DisciplineRank(serialNeutralMesh.get()); // compute N_{D_Nf}
 
     buildScaledMeshes();
 
@@ -286,6 +289,7 @@ void MeshCoupling::staticPartitionMeshByMetis(SurfUnstructured & mesh) {
 */
 std::unordered_map<long,int> MeshCoupling::computeStaticPartitionByMetis(SurfUnstructured & mesh) {
 
+
     bitpit::PatchNumberingInfo patchInfo = bitpit::PatchNumberingInfo(&mesh);
 
     std::unordered_map<long,int> cellRanks;
@@ -357,6 +361,7 @@ std::unordered_map<long,int> MeshCoupling::computeStaticPartitionByMetis(SurfUns
 
         int ret = METIS_PartGraphKway ( &nvtxs, &ncon, xadj.data(), adjncy.data(), NULL, NULL,
                 NULL, &nParts, NULL, NULL, NULL, &objval, part.data() );
+        BITPIT_UNUSED(ret);
 
 //        //DEBUG
 //        std::cout << "Metis partition method error flag = " << ret << std::endl;
@@ -417,19 +422,19 @@ void MeshCoupling::staticPartitionNeutralMeshByMeshFileOrder() {
     Compute a global map ids->ranks for the neutral mesh in order to partition the neutral mesh
     with rank sub-domains overlapping the discipline sub-domains with the same rank.
 */
-void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
+void MeshCoupling::computeGlobalNeutralId2DisciplineRank(SurfUnstructured *serialNeutralMesh) {
     //Map the discipline rank distribution on neutral mesh
     //Rank 0 communicate neutral mesh ids and cell centers to the other ranks
     long *idxNeutral = nullptr; //ordered by neutral mesh id
     double * cellCentersNeutral = nullptr; //ordered by neutral mesh id
     int nofCellsNeutral = 0;
     if(m_rank == 0) {
-        nofCellsNeutral = m_unitNeutralMesh->getCellCount();
+        nofCellsNeutral = serialNeutralMesh->getCellCount();
         idxNeutral = new long[nofCellsNeutral];
         cellCentersNeutral = new double[nofCellsNeutral * 3];
-        for(auto cell : m_unitNeutralMesh->getCells()) {
+        for(auto cell : serialNeutralMesh->getCells()) {
             long id = cell.getId();
-            const std::array<double,3> & cellCenter = m_unitNeutralMesh->evalCellCentroid(id);
+            const std::array<double,3> & cellCenter = serialNeutralMesh->evalCellCentroid(id);
             idxNeutral[id] = id;
             for(int i = 0; i < 3; ++i) {
                 cellCentersNeutral[id * 3 + i] = cellCenter[i];
@@ -450,11 +455,12 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
     log::cout() << "Tree declared" << std::endl;
     disciplineTree.build(1);
     //Initialiaze rank maps - array ordered by id and containing ranks
-    m_globalNeutralId2DisciplineRank.resize(nofCellsNeutral,-1);
+    m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank.resize(nofCellsNeutral,-1);
     //Loop over neutral cell center and check the discipline cell the neutral cell center belong to. Assign rank according to
     std::array<double,3> tempCellCenter;
     darray3 lambda;
     darray3 xP;
+    BITPIT_UNUSED(lambda);
     bitpit::utils::DoubleFloatingEqual checkFloating;
     for(int i = 0; i < nofCellsNeutral; ++i) {
         BITPIT_UNUSED(xP);
@@ -471,12 +477,12 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank() {
                     m_unitDisciplineMesh->getCellVertexCoordinates(id)[0],m_unitDisciplineMesh->evalFacetNormal(id),xP);
 
             if(checkFloating(closestCellDist,closestCellPlaneDist)) {
-                m_globalNeutralId2DisciplineRank[i] = m_rank;
+                m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank[i] = m_rank;
             }
         }
     }
     //Reduce disciplineMappedRankForNeutral on Rank 0 for static partitioning
-    MPI_Allreduce(MPI_IN_PLACE,m_globalNeutralId2DisciplineRank.data(),nofCellsNeutral,MPI_INT,MPI_MAX,m_comm);
+    MPI_Allreduce(MPI_IN_PLACE,m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank.data(),nofCellsNeutral,MPI_INT,MPI_MAX,m_comm);
 
 }
 
@@ -532,12 +538,13 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
     log::cout() << "Tree declared" << std::endl;
     neutralTree.build(1);
     //Initialiaze rank maps - array ordered by id and containing ranks
-    m_globalDisciplineId2NeutralRank.resize(nofCellsDiscipline,-1);
+    m_globalDisciplineId2NeutralMeshFileRank.resize(nofCellsDiscipline,-1);
     std::vector<int> candidates(nofCellsDiscipline,-1);
     //Loop over discipline cell center and check the neutral cell the discipline cell center belong to. Assign rank according to
     std::array<double,3> tempCellCenter;
     darray3 lambda;
     darray3 xP;
+    BITPIT_UNUSED(lambda);
     bitpit::utils::DoubleFloatingEqual checkFloating;
     for(int i = 0; i < nofCellsDiscipline; ++i) {
         BITPIT_UNUSED(xP);
@@ -553,31 +560,43 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
             closestCellPlaneDist = bitpit::CGElem::distancePointPlane(tempCellCenter,
                     m_unitNeutralMesh->getCellVertexCoordinates(id)[0],m_unitNeutralMesh->evalFacetNormal(id),xP);
             if(checkFloating(closestCellDist,closestCellPlaneDist)) {
-                m_globalDisciplineId2NeutralRank[i] = m_rank;
+                m_globalDisciplineId2NeutralMeshFileRank[i] = m_rank;
             } else {
                 candidates[i] = m_rank;
             }
         }
     }
     //Reduce disciplineMappedRankForNeutral on Rank 0 for static partitioning
-    MPI_Allreduce(MPI_IN_PLACE,m_globalDisciplineId2NeutralRank.data(),nofCellsDiscipline,MPI_INT,MPI_MAX,m_comm);
+    MPI_Allreduce(MPI_IN_PLACE,m_globalDisciplineId2NeutralMeshFileRank.data(),nofCellsDiscipline,MPI_INT,MPI_MAX,m_comm);
     MPI_Allreduce(MPI_IN_PLACE,candidates.data(),nofCellsDiscipline,MPI_INT,MPI_MAX,m_comm);
     //check cellcenters candidates
     for(int c = 0; c < nofCellsDiscipline; ++c) {
-        if(m_globalDisciplineId2NeutralRank[c] == -1) {
-            m_globalDisciplineId2NeutralRank[c] = candidates[c];
+        if(m_globalDisciplineId2NeutralMeshFileRank[c] == -1) {
+            m_globalDisciplineId2NeutralMeshFileRank[c] = candidates[c];
         }
     }
 
+}
 
 /*!
+    Compute a local map ids->ranks for the discipline mesh in order to partition the discipline mesh
+    with rank sub-domains overlapping the neutral sub-domains with the same rank.
+*/
+void MeshCoupling::computeDiscipline2FileNeutralCellPerRanks() {
+
+    for(const Cell & cell : m_unitDisciplineMesh->getCells()) {
+        if(cell.isInterior()) {
+            long id =  cell.getId();
+            int rank = m_globalDisciplineId2NeutralMeshFileRank[id];
+            if(rank != m_rank) {
+                m_discipline2FileNeutralCellPerRanks[id] = rank;
             }
         }
     }
     std::cout << "Rank " << m_rank << " m_discipline2FileNeutralCellPerRanks size " << m_discipline2FileNeutralCellPerRanks.size() << std::endl;
 
-}
 
+}
 
 
 /*!
@@ -642,6 +661,22 @@ void MeshCoupling::dynamicPartitionNeutralMeshByDiscipline() {
 
     //m_unitNeutralMesh->write(name);
     //DEBUG
+}
+
+/*!
+    Dynamically partition discipline mesh by neutral mesh file partitioning
+*/
+void MeshCoupling::staticPartitionDisciplineMeshByNeutralFile() {
+
+    m_unitDisciplineMesh->setCommunicator(m_comm);
+    std::vector<adaption::Info> partitionInfo = m_unitDisciplineMesh->partition(m_discipline2FileNeutralCellPerRanks,true,false);
+    //DEBUG
+    std::string name = "fileNeutralPartitionedDiscipline";
+    m_unitDisciplineMesh->write(name);
+    //DEBUG
+}
+
+/*!
 
 }
 }

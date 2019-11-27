@@ -115,11 +115,11 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     //Compute the discipline ids/ranks map to get discipline rank sub-domains overlapping the neutral ones with the same rank
     computeGlobalDisciplineId2NeutralRank();
 
-    computeDiscipline2FileNeutralCellPerRanks(); //compute static m_discipline2FileNeutralCellPerRanks
+    computeDiscipline2FileNeutralCellPerRanks(); //compute static m_discipline2FileNeutralCellPerRanks: from D_serial to D_Nf
 
     staticPartitionDisciplineMeshByNeutralFile();
 
-    computeGlobalNeutralId2DisciplineRank(serialNeutralMesh.get()); // compute N_{D_Nf}
+    computeGlobalNeutralId2DisciplineRank(serialNeutralMesh.get()); // compute global vector to get N_{D_Nf}
 
     computeNeutralId2DisciplineCellPerRanks(); //compute dynamic m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks: from Nf to N_{D_Nf}
 

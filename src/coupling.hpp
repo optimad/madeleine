@@ -48,11 +48,7 @@ public:
 private:
     void readUnitDisciplineMesh();
     void readUnitNeutralMesh();
-    std::unordered_map<long,int> computeStaticPartitionByMetis(SurfUnstructured & mesh);
-    void staticPartitionMeshByMetis(SurfUnstructured & mesh);
-    void staticPartitionDisciplineMeshByMetis();
-    void staticPartitionNeutralMeshByMeshFileOrder();
-    void dynamicPartitionNeutralMeshByDiscipline();
+    void staticPartitionNeutralMeshByMeshFileOrder(); //partitioning Nf
 
     void computeGlobalNeutralId2DisciplineRank();
     void computeGlobalDisciplineId2NeutralRank();
@@ -72,6 +68,12 @@ private:
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;
+
+    //oldies
+    std::unordered_map<long,int> computeStaticPartitionByMetis(SurfUnstructured & mesh);
+    void staticPartitionMeshByMetis(SurfUnstructured & mesh);
+    void staticPartitionDisciplineMeshByMetis();
+    void dynamicPartitionNeutralMeshByDiscipline();
 
 #if ENABLE_MPI==1
     MPI_Comm m_comm;

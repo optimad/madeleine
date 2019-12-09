@@ -12,7 +12,6 @@
 #include "bitpit_IO.hpp"
 #include "surfunstructured.hpp"
 #include "commons.hpp"
-#include "coupling.hpp"
 
 using namespace bitpit;
 

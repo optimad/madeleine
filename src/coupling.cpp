@@ -60,6 +60,7 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     m_neutralTag = 0;
     m_disciplineTag = 0;
 
+    m_lbCommunicator = std::unique_ptr<DataCommunicator>(new DataCommunicator(m_comm));
 
 #else
     m_rank = 0;
@@ -293,7 +294,7 @@ void MeshCoupling::readUnitNeutralMesh() {
 void MeshCoupling::staticPartitionMeshByMetis(SurfUnstructured & mesh) {
 
     std::unordered_map<long,int> cellRanks = computeStaticPartitionByMetis(mesh);
-    std::vector<adaption::Info> partitionInfo = mesh.partition(cellRanks,true,false);
+    std::vector<adaption::Info> partitionInfo = mesh.partition(cellRanks,true,true);
 }
 
 /*!
@@ -423,11 +424,7 @@ void MeshCoupling::staticPartitionNeutralMeshByMeshFileOrder() {
     }
     //Mesh file ordered unit neutral mesh partitioning
     m_unitNeutralMesh->setCommunicator(m_comm);
-    std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(staticNeutralMeshFilePartitionCellPerRank,true,false);
-    //DEBUG
-    std::string name("filePartitionedNeutral");
-    m_unitNeutralMesh->write(name);
-    //DEBUG
+    std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(staticNeutralMeshFilePartitionCellPerRank,true,true);
 
 }
 
@@ -652,46 +649,42 @@ void MeshCoupling::dynamicPartitionNeutralMeshByDiscipline() {
 //
 //    mapStream.close();
 
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(m_rank == r) {
-            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
-                if(cell.isInterior()) {
-                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
-                } else {
-                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
-                }
-                std::cout << std::flush;
-            }
+//    for(int r = 0; r < m_nprocs; ++r) {
+//        if(m_rank == r) {
+//            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
+//                if(cell.isInterior()) {
+//                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                } else {
+//                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                }
+//                std::cout << std::flush;
+//            }
+//
+//        }
+//        MPI_Barrier(m_comm);
+//        std::cout << std::flush;
+//    }
 
-        }
-        MPI_Barrier(m_comm);
-        std::cout << std::flush;
-    }
 
-
-    std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(m_neutralFile2DisciplineCellPerRanks,true,false);
+    std::vector<adaption::Info> partitionInfo = m_unitNeutralMesh->partition(m_neutralFile2DisciplineCellPerRanks,true,true);
     //DEBUG
 
-    std::string name("disciplinePartitionedNeutral");
+//    for(int r = 0; r < m_nprocs; ++r) {
+//        if(m_rank == r) {
+//            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
+//                if(cell.isInterior()) {
+//                    std::cout << "after interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                } else {
+//                    std::cout << "after ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                }
+//                std::cout << std::flush;
+//            }
+//
+//        }
+//        MPI_Barrier(m_comm);
+//        std::cout << std::flush;
+//    }
 
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(m_rank == r) {
-            for(const Cell & cell : m_unitNeutralMesh->getCells()) {
-                if(cell.isInterior()) {
-                    std::cout << "after interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
-                } else {
-                    std::cout << "after ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_unitNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_unitNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
-                }
-                std::cout << std::flush;
-            }
-
-        }
-        MPI_Barrier(m_comm);
-        std::cout << std::flush;
-    }
-
-    //m_unitNeutralMesh->write(name);
-    //DEBUG
 }
 
 /*!
@@ -700,11 +693,8 @@ void MeshCoupling::dynamicPartitionNeutralMeshByDiscipline() {
 void MeshCoupling::staticPartitionDisciplineMeshByNeutralFile() {
 
     m_unitDisciplineMesh->setCommunicator(m_comm);
-    std::vector<adaption::Info> partitionInfo = m_unitDisciplineMesh->partition(m_disciplineId2NeutralMeshFileCellPerRanks,true,false);
-    //DEBUG
-    std::string name = "fileNeutralPartitionedDiscipline";
-    m_unitDisciplineMesh->write(name);
-    //DEBUG
+    std::vector<adaption::Info> partitionInfo = m_unitDisciplineMesh->partition(m_disciplineId2NeutralMeshFileCellPerRanks,true,true);
+
 }
 
 /*!
@@ -728,6 +718,176 @@ void MeshCoupling::buildScaledMeshes() {
     PiercedVector<Vertex> & neutralVertices = m_scaledNeutralMesh->getVertices();
     for(Vertex & v : neutralVertices) {
         v.scale(scaling,origin);
+    }
+
+}
+
+/*!
+    Dynamically partition neutral mesh by discipline partitioning
+*/
+void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline() {
+
+//    std::stringstream dumpFileStringStream;
+//    dumpFileStringStream << "neutralMeshFilePartitioned_" << m_rank << ".dat";
+//    std::ofstream dumpStream;
+//    dumpStream.open(dumpFileStringStream.str().c_str());
+//    m_scaledNeutralMesh->dump(dumpStream);
+//    dumpStream.close();
+//    std::stringstream mapStringStream;
+//    mapStringStream << "map_" << m_rank << ".dat";
+//    std::ofstream mapStream;
+//    mapStream.open(mapStringStream.str().c_str());
+//
+//    for(auto & elem : m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks) {
+//        mapStream << elem.first << " " << elem.second << std::endl;
+//    }
+//
+//    mapStream.close();
+//
+//    std::string name = "scaledMeshBefore";
+//    m_scaledNeutralMesh->write(name);
+
+//    for(int r = 0; r < m_nprocs; ++r) {
+//        if(m_rank == r) {
+//            for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
+//                if(cell.isInterior()) {
+//                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                } else {
+//                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_scaledNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+//                }
+//                std::cout << std::flush;
+//            }
+//
+//        }
+//        MPI_Barrier(m_comm);
+//        std::cout << std::flush;
+//    }
+//
+    for(int r = 0; r < m_nprocs; ++r) {
+        if(m_rank == r) {
+            for(auto & elem : m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks) {
+                std::cout << "map rank " << m_rank << " " << elem.first << " " << elem.second << std::endl;
+            }
+        }
+        MPI_Barrier(m_comm);
+        std::cout << std::flush;
+    }
+    std::cout << std::flush;
+    MPI_Barrier(m_comm);
+
+    std::cout << "Partition prepare.." << std::endl;
+    std::vector<adaption::Info> partitionInfo = m_scaledNeutralMesh->partitioningPrepare(m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks,true);
+    //std::vector<adaption::Info> partitionInfo = m_scaledNeutralMesh->partition(m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks,true,false);
+    //m_scaledNeutralMesh->getCells().squeeze();
+    //m_scaledNeutralMesh->squeeze();
+
+    //Communicate exchanged cell values during partitioning
+    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
+    std::cout << "size single cell " << singleCellByteSize << std::endl;
+    for(auto info : partitionInfo) {
+
+        int sendRank = info.rank;
+        size_t bufferSize = info.previous.size() * singleCellByteSize + sizeof(size_t);
+        m_lbCommunicator->setSend(sendRank,bufferSize);
+
+        SendBuffer &sendBuffer = m_lbCommunicator->getSendBuffer(sendRank);
+        sendBuffer << info.previous.size();
+        for(const long & sendId : info.previous) {
+            sendBuffer << sendId;
+            double *data = m_neutralData.data(sendId,0);
+            for(size_t k = 0; k < m_neutralData.getFieldCount(); ++k) {
+                sendBuffer << data[k];
+            }
+        }
+
+    }
+    m_lbCommunicator->discoverRecvs();
+    m_lbCommunicator->startAllRecvs();
+    m_lbCommunicator->startAllSends();
+
+    partitionInfo = m_scaledNeutralMesh->partitioningAlter(true,false);
+    m_scaledNeutralMesh->partitioningCleanup();
+
+    long recvId;
+    size_t nofCells;
+    const std::vector<int> & recvRanks = m_lbCommunicator->getRecvRanks();
+    for(int rank : recvRanks) {
+        m_lbCommunicator->waitRecv(rank);
+        RecvBuffer & recvBuffer = m_lbCommunicator->getRecvBuffer(rank);
+        recvBuffer >> nofCells;
+        for(size_t cell = 0; cell < nofCells; ++cell) {
+            recvBuffer >> recvId;
+            double *data = m_neutralData.data(recvId,0);
+            for(size_t k = 0; k < m_neutralData.getFieldCount(); ++k) {
+                recvBuffer >> data[k];
+            }
+        }
+    }
+
+}
+
+
+/*!
+    Dynamically partition neutral mesh by discipline partitioning
+*/
+void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshWithData() {
+
+    std::string name = "N_{D_Nf}";
+    m_scaledNeutralMesh->write(name);
+
+
+    //TODO continue from here
+    for(Cell & cell : m_scaledNeutralMesh->getCells()) {
+        if(cell.isInterior()) {
+            long id = cell.getId();
+            m_neutralMeshFilePartitionCellPerRank[id] = m_globalNeutralId2MeshFileRank[id];
+        }
+    }
+
+    std::cout << "Partition prepare.." << std::endl;
+    std::vector<adaption::Info> partitionInfo = m_scaledNeutralMesh->partitioningPrepare(m_neutralMeshFilePartitionCellPerRank,true);
+
+    //Communicate exchanged cell values during partitioning
+    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
+    std::cout << "size single cell " << singleCellByteSize << std::endl;
+    for(auto info : partitionInfo) {
+
+        int sendRank = info.rank;
+        size_t bufferSize = info.previous.size() * singleCellByteSize + sizeof(size_t);
+        m_lbCommunicator->setSend(sendRank,bufferSize);
+
+        SendBuffer &sendBuffer = m_lbCommunicator->getSendBuffer(sendRank);
+        sendBuffer << info.previous.size();
+        for(const long & sendId : info.previous) {
+            sendBuffer << sendId;
+            double *data = m_neutralData.data(sendId,0);
+            for(size_t k = 0; k < m_neutralData.getFieldCount(); ++k) {
+                sendBuffer << data[k];
+            }
+        }
+
+    }
+    m_lbCommunicator->discoverRecvs();
+    m_lbCommunicator->startAllRecvs();
+    m_lbCommunicator->startAllSends();
+
+    partitionInfo = m_scaledNeutralMesh->partitioningAlter(true,false);
+    m_scaledNeutralMesh->partitioningCleanup();
+
+    long recvId;
+    size_t nofCells;
+    const std::vector<int> & recvRanks = m_lbCommunicator->getRecvRanks();
+    for(int rank : recvRanks) {
+        m_lbCommunicator->waitRecv(rank);
+        RecvBuffer & recvBuffer = m_lbCommunicator->getRecvBuffer(rank);
+        recvBuffer >> nofCells;
+        for(size_t cell = 0; cell < nofCells; ++cell) {
+            recvBuffer >> recvId;
+            double *data = m_neutralData.data(recvId,0);
+            for(size_t k = 0; k < m_neutralData.getFieldCount(); ++k) {
+                recvBuffer >> data[k];
+            }
+        }
     }
 
 }

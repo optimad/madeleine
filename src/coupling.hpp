@@ -61,6 +61,9 @@ private:
     void computeGlobalNeutralId2DisciplineRank(SurfUnstructured *serialNeutralMesh); //compute global vector to get N_{D_Nf}. It needs to be executed just once. The result is in m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank
     void computeNeutralId2DisciplineCellPerRanks(); //compute local map to get N_{D_Nf}
 
+    void dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
+    void dynamicPartitionNeutralMeshByNeutralMeshWithData();
+
     void synchronizeMeshData();
     void uniformlyInitAllData(double value);
     void prepareWritingData();
@@ -112,10 +115,12 @@ private:
     std::vector<int> m_globalNeutralId2MeshFileRank;                                            //(Nf)       computed outside this class. Useful to build cellPerRanks to get neutral mesh file partitioning
     std::unordered_map<long,int> m_disciplineId2NeutralMeshFileCellPerRanks;                    //(D_Nf)     local map to partition the discipline mesh overlapping the neutral mesh file partitioning. It depends on the starting discipline mesh partitioning
     std::unordered_map<long,int> m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks;  //(N_{D_Nf}) local map to partition the neutral mesh overlapping the discipline mesh file partitioning. It depends on the starting neutral mesh partitioning
+    std::unordered_map<long,int> m_neutralMeshFilePartitionCellPerRank;                          //(Nf)       local map to partition the neutral mesh with mesh file partitioning. It depends on the starting neutral mesh partitioning
+
+    std::unique_ptr<DataCommunicator> m_lbCommunicator;
 
     //oldies
     std::unordered_map<long,int> m_neutralFile2DisciplineCellPerRanks;
-
 #endif
 
 };

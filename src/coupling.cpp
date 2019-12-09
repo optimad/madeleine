@@ -148,42 +148,80 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_scaledDisciplineMesh = PatchKernel::clone(m_unitDisciplineMesh.get());
 #endif
 
-
 };
 
 /*!
-    Interpolate from neutral to discipline, compute smoothed step function, interpolate from discipline to neutral
+    Interpolate from neutral(Nf) to discipline(D_Nf), compute smoothed step function on discipline(D_Nf), partition neutral mesh(N_{D_Nf}), interpolate from discipline(D_Nf) to neutral(N_{D_Nf})
 
-    \param[in] neutralData the container with data from neutral mesh (data have to be coherent with the mesh)
+    \param[in] neutralInputArray contiguous C-array from NUMPY array ordered like id-ordered cells in Nf mesh file partitioning
 */
-void MeshCoupling::compute(PiercedVector<double,long>* neutralData) {
+void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
 
     log::cout() << "First Interpolation" << std::endl;
-    writeData(m_scaledNeutralMesh.get(),"neutralInitialization",neutralData,getInputDataNames());
-    interpolateFromTo(m_scaledNeutralMesh.get(),neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData);
-    writeData(m_scaledDisciplineMesh.get(),"disciplineAfteInterpolation",&m_disciplineData,getOutputDataNames());
+    //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning
+    m_scaledNeutralMesh->sortCells();
 
-//    for(double & x : m_disciplineData) {
-//        x = (tanh(10.0 * (x - 0.5)) + 1.0) / 2.0;
-//    }
-    log::cout() << "Computation" << std::endl;
-    const PiercedVector<Vertex> & vertices = m_scaledDisciplineMesh->getVertices();
-    for(const Vertex & v : vertices) {
-        darray3 x = v.getCoords();
-        double r = sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-        double datum = acos(x[0]/r) - M_PI/2;//sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
-        datum = sin(4*datum);
-        datum *= datum;
-        *(m_disciplineData.find(v.getId())) = datum;
+    //put data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
+    std::size_t counter = 0;
+    for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
+        long id = cell.getId();
+        if(cell.isInterior()) {
+            m_neutralData.set(id,neutralInputArray[counter]);
+            m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
+        } else {
+            m_neutralData.set(id,-1);
+        }
     }
 
-    writeData(m_scaledDisciplineMesh.get(),"disciplineAfterComputation",&m_disciplineData,getOutputDataNames());
+    //Update neutral ghost cell values
+    //It should not be the case but call m_neutralGhostCommunicator->resetExchangeLists() if neutral mesh has changed.
 
-    log::cout() << "Second Interpolation" << std::endl;
-    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),neutralData);
-    writeData(m_scaledNeutralMesh.get(),"neutralAfterInterpolation",neutralData,getInputDataNames());
+    updateNeutralGhosts();
 
-    log::cout() << "Exiting.." << std::endl;
+    //Interpolate from N_f to D_{N_f]
+    std::cout << "N_f to D_{N_f} interpolation." << std::endl;
+    interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData);
+
+    //Update discipline ghost cell values
+    updateDisciplineGhosts();
+
+    disciplineKernel();
+
+    std::string name = "Nf";
+    m_scaledNeutralMesh->write(name);
+    //With Data partitioning, but not useful, just for testing
+    dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
+
+    //Interpolate from N_f to D_{N_f]
+    std::cout << "D_{N_f} to N_{D_{N_f}} interpolation." << std::endl;
+    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData);
+
+    dynamicPartitionNeutralMeshByNeutralMeshWithData();
+
+    name = "unsortedNf";
+    m_scaledNeutralMesh->write(name);
+
+    m_scaledNeutralMesh->sortCells();
+
+    name = "sortedNf";
+    m_scaledNeutralMesh->write(name);
+
+    for(int r = 0; r < m_nprocs; ++r) {
+        if(m_rank == r) {
+            for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
+                if(cell.isInterior()) {
+                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                } else {
+                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_scaledNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                }
+                std::cout << std::flush;
+            }
+
+        }
+        MPI_Barrier(m_comm);
+        std::cout << std::flush;
+    }
+
 
 };
 

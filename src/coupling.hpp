@@ -39,7 +39,7 @@ public:
     MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName);
 #endif
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius, const std::vector<int> & globalNeutralId2MeshFileRank);
-    void compute(PiercedVector<double,long> * neutralData);
+    void compute(double *neutralInputArray, std::size_t size);
     const std::vector<std::string> & getInputDataNames();
     const std::vector<std::string> & getOutputDataNames();
     const SurfUnstructured * getDisciplineMesh();

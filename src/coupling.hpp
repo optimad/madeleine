@@ -73,6 +73,8 @@ private:
     void updateNeutralGhosts();
     void updateDisciplineGhosts();
 
+    void disciplineKernel();
+
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
     double m_radius;

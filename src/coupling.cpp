@@ -1043,6 +1043,18 @@ void MeshCoupling::updateDisciplineGhosts() {
 
 }
 
+/*!
+    Use inputs and radius to perform computation on discipline mesh
+*/
+void MeshCoupling::disciplineKernel() {
+
+
+
+
+    updateDisciplineGhosts();
+}
+
+
 }
 
 

@@ -120,7 +120,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     computeDiscipline2FileNeutralCellPerRanks(); //compute static m_discipline2FileNeutralCellPerRanks: from D_serial to D_Nf
 
-    staticPartitionDisciplineMeshByNeutralFile();
+    staticPartitionDisciplineMeshByNeutralFile(); //D_Nf
 
     computeGlobalNeutralId2DisciplineRank(serialNeutralMesh.get()); // compute global vector to get N_{D_Nf}
 
@@ -445,8 +445,6 @@ void MeshCoupling::staticPartitionDisciplineMeshByMetis() {
 
     //Partition the discipline mesh
     staticPartitionMeshByMetis(*(m_unitDisciplineMesh.get()));
-    std::string name("metisPatitionedDiscipline");
-    m_unitDisciplineMesh->write(name);
 
 }
 
@@ -502,7 +500,6 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank(SurfUnstructured *seria
     //Project rank from discipline partition to cellRanks for neutral mesh
     //Build discipline mesh surface skd tree
     SurfaceSkdTree disciplineTree(m_unitDisciplineMesh.get());
-    log::cout() << "Tree declared" << std::endl;
     disciplineTree.build(1);
     //Initialiaze rank maps - array ordered by id and containing ranks
     m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank.resize(nofCellsNeutral,-1);
@@ -567,25 +564,9 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
     MPI_Bcast(idxDiscipline,nofCellsDiscipline,MPI_LONG,0,m_comm);
     MPI_Bcast(cellCentersDiscipline,3*nofCellsDiscipline,MPI_DOUBLE,0,m_comm);
 
-    //DEBUG
-//    for(int r = 0; r < m_nprocs; ++r) {
-//        if(r==m_rank) {
-//            for(int i = 0; i < nofCellsDiscipline; ++i) {
-//                std::cout << "id: " << idxDiscipline[i] << " - cell center: ";
-//                for(int j = 0; j < 3; ++j) {
-//                    std::cout << cellCentersDiscipline[i * 3 + j] << " ";
-//                }
-//                std::cout << std::endl;
-//            }
-//        }
-//        MPI_Barrier(m_comm);
-//    }
-    //DEBUG
-
     //Project rank from neutral partition to cellRanks for discipline mesh
     //Build neutral mesh surface skd tree
     SurfaceSkdTree neutralTree(m_unitNeutralMesh.get());
-    log::cout() << "Tree declared" << std::endl;
     neutralTree.build(1);
     //Initialiaze rank maps - array ordered by id and containing ranks
     m_globalDisciplineId2NeutralMeshFileRank.resize(nofCellsDiscipline,-1);
@@ -664,7 +645,6 @@ void MeshCoupling::computeNeutralId2DisciplineCellPerRanks() {
             }
         }
     }
-    std::cout << "Rank " << m_rank << " m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks size " << m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks.size() << std::endl;
 }
 
 /*!

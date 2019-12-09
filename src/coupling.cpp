@@ -44,7 +44,6 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     strcpy(workers_comm_name_char,workers_comm_name.c_str());
     MPI_Comm_set_name(m_comm,workers_comm_name_char);
 
-    //DEBUG
     char worldnameout[MPI_MAX_OBJECT_NAME];
     char workersnameout[MPI_MAX_OBJECT_NAME];
     int rlen;
@@ -57,7 +56,10 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     MPI_Comm_size(MPI_COMM_WORLD,&worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD,&worldRank);
     std::cout << "I'm " << m_rank << " of " << m_nprocs  << " on " << workersName  << " and " << worldRank << " of " << worldSize << " on " << worldName << std::endl;
-    //DEBUG
+
+    m_neutralTag = 0;
+    m_disciplineTag = 0;
+
 
 #else
     m_rank = 0;
@@ -132,6 +134,9 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     //Set mesh VTK writer
     //ATTENTION from here on scaled meshes are written with attached data, therefore data container have to be coherent with the relative mesh
     prepareWritingData();
+
+    //Initialize ghost communicators
+    initializeGhostCommunicators();
 
 
 #else
@@ -765,6 +770,77 @@ void MeshCoupling::prepareWritingData() {
     m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
     for(const std::string & fieldName : m_disciplineVTKFieldStreamer->getFieldNames()) {
         m_scaledDisciplineMesh->getVTK().addData<double>(fieldName, VTKFieldType::SCALAR, VTKLocation::CELL, m_disciplineVTKFieldStreamer.get());
+    }
+
+}
+
+/*!
+    Creates a new ghost communicator.
+
+    \param continuous defines if the communicator will be set in continuous mode
+*/
+void MeshCoupling::createGhostCommunicators(bool continuous) {
+    // Create communicators
+    GhostCommunicator *neutralGhostCommunicator = new GhostCommunicator(m_scaledNeutralMesh.get());
+    GhostCommunicator *disciplineGhostCommunicator = new GhostCommunicator(m_scaledDisciplineMesh.get());
+    neutralGhostCommunicator->resetExchangeLists();
+    disciplineGhostCommunicator->resetExchangeLists();
+    neutralGhostCommunicator->setRecvsContinuous(continuous);
+    disciplineGhostCommunicator->setRecvsContinuous(continuous);
+
+    // Communicator tag
+    m_neutralTag = neutralGhostCommunicator->getTag();
+    m_disciplineTag = disciplineGhostCommunicator->getTag();
+
+    // Add ghost communicator
+    m_neutralGhostCommunicator = std::unique_ptr<GhostCommunicator>(neutralGhostCommunicator);
+    m_disciplineGhostCommunicator = std::unique_ptr<GhostCommunicator>(disciplineGhostCommunicator);
+}
+
+/*!
+    Initialize the data communicators that will be used for exchanging ghost data.
+*/
+void MeshCoupling::initializeGhostCommunicators() {
+
+    m_neutralGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>>(&m_neutralData));
+    m_disciplineGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>>(&m_disciplineData));
+
+    createGhostCommunicators(true);
+
+    m_neutralGhostCommunicator->addData(m_neutralGhostStreamer.get());
+    m_disciplineGhostCommunicator->addData(m_disciplineGhostStreamer.get());
+}
+
+/*!
+    Update neutral data ghost values
+*/
+void MeshCoupling::updateNeutralGhosts() {
+
+    m_neutralGhostCommunicator->resetExchangeLists();
+
+    if (m_scaledNeutralMesh->isPartitioned()) {
+        m_neutralGhostCommunicator->startAllExchanges();
+    }
+
+    // Receive pressure
+    if (m_scaledNeutralMesh->isPartitioned()) {
+        m_neutralGhostCommunicator->completeAllExchanges();
+    }
+
+}
+
+/*!
+    Update discipline data ghost values
+*/
+void MeshCoupling::updateDisciplineGhosts() {
+
+    if (m_scaledDisciplineMesh->isPartitioned()) {
+        m_disciplineGhostCommunicator->startAllExchanges();
+    }
+
+    // Receive pressure
+    if (m_scaledDisciplineMesh->isPartitioned()) {
+        m_disciplineGhostCommunicator->completeAllExchanges();
     }
 
 }

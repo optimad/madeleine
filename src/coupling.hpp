@@ -22,6 +22,7 @@
 #include <bitpit_surfunstructured.hpp>
 #include "commons.hpp"
 #include "couplingUtils.hpp"
+#include "communications.hpp"
 
 using namespace bitpit;
 
@@ -64,6 +65,11 @@ private:
     void uniformlyInitAllData(double value);
     void prepareWritingData();
 
+    void createGhostCommunicators(bool continuous);
+    void initializeGhostCommunicators();
+    void updateNeutralGhosts();
+    void updateDisciplineGhosts();
+
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
     double m_radius;
@@ -83,6 +89,13 @@ private:
 
     std::unique_ptr<coupling::FieldStreamer> m_disciplineVTKFieldStreamer;
     std::unique_ptr<coupling::FieldStreamer> m_neutralVTKFieldStreamer;
+
+    std::unique_ptr<GhostCommunicator> m_neutralGhostCommunicator;
+    std::unique_ptr<GhostCommunicator> m_disciplineGhostCommunicator;
+    int m_neutralTag;
+    int m_disciplineTag;
+    std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>> m_neutralGhostStreamer;
+    std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>> m_disciplineGhostStreamer;
 
     //oldies
     std::unordered_map<long,int> computeStaticPartitionByMetis(SurfUnstructured & mesh);

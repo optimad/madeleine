@@ -29,7 +29,8 @@ void test00002( int argc, char *argv[] ) {
     mesh.setCommunicator(MPI_COMM_WORLD);
 
     std::stringstream meshDump;
-    meshDump << "data/neutralMeshFilePartitioned_" << rank << ".dat";
+    std::string folder = "secondo";
+    meshDump << folder << "/neutralMeshFilePartitioned_" << rank << ".dat";
     std::ifstream meshStream;
     meshStream.open(meshDump.str().c_str());
     mesh.restore(meshStream);
@@ -37,7 +38,7 @@ void test00002( int argc, char *argv[] ) {
     mesh.write(meshIn);
 
     std::stringstream mapFile;
-    mapFile << "data/map_" << rank << ".dat";
+    mapFile << folder << "/map_" << rank << ".dat";
     std::unordered_map<long,int> map;
     std::ifstream mapStream;
     mapStream.open(mapFile.str().c_str());
@@ -49,13 +50,23 @@ void test00002( int argc, char *argv[] ) {
         map[key] = value;
     }
 
+    PiercedStorage<double,long> data;
+
+    data.setDynamicKernel(&(mesh.getCells()),PiercedVector<Cell>::SYNC_MODE_JOURNALED);
+
+    data.fill(0.0);
+    mesh.squeeze();
+    mesh.sortCells();
+
 //    for(auto & elem : map) {
 //        std::cout << "rank " << rank << " " << elem.first << " " << elem.second << std::endl;
 //    }
 
-    std::vector<adaption::Info> partitionInfo = mesh.partition(map,true,false);
-    std::string meshOut("meshafter");
-    mesh.write(meshOut);
+    std::vector<adaption::Info> partitionInfo = mesh.partition(map,true,true);
+//    mesh.squeeze();
+//    mesh.getCells().sync();
+//    std::string meshOut("meshafter");
+//    mesh.write(meshOut);
 }
 
 

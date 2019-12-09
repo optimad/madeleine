@@ -30,7 +30,7 @@ void test00001( int argc, char *argv[] ) {
 
     // Initialize parallel (each process runs independently from the others)
     int nProcessors;
-    int rank;
+    int rank, workRank;
 
 #if ENABLE_MPI==1
     //MPI_Init(&argc, &argv);
@@ -92,6 +92,7 @@ void test00001( int argc, char *argv[] ) {
 
     //Make ONLY workers work
     if(workersComm != MPI_COMM_NULL) {
+        MPI_Comm_rank(workersComm, &workRank);
         std::vector<int> cellIndicesPerRank;
         coupling::computeMeshFilePartitioning(neutralFilemesh,cellIndicesPerRank,workersComm);
         //
@@ -101,7 +102,8 @@ void test00001( int argc, char *argv[] ) {
         //
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);
-        //    parallelToyDiscipline.compute(&neutralData);
+        std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),workRank);
+        parallelToyDiscipline1.compute(neutralData.data(),neutralData.size());
         //
         //    parallelToyDiscipline.close();
     }

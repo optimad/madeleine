@@ -139,6 +139,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     //Initialize ghost communicators
     initializeGhostCommunicators();
 
+    std::string name = "D_Nf";
+    m_scaledDisciplineMesh->write(name);
 
 #else
     m_unitDisciplineMesh->reset();

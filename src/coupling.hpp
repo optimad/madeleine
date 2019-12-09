@@ -21,6 +21,7 @@
 #include <bitpit_CG.hpp>
 #include <bitpit_surfunstructured.hpp>
 #include "commons.hpp"
+#include "couplingUtils.hpp"
 
 using namespace bitpit;
 
@@ -59,13 +60,18 @@ private:
     void computeGlobalNeutralId2DisciplineRank(SurfUnstructured *serialNeutralMesh); //compute global vector to get N_{D_Nf}. It needs to be executed just once. The result is in m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank
     void computeNeutralId2DisciplineCellPerRanks(); //compute local map to get N_{D_Nf}
 
+    void synchronizeMeshData();
+    void uniformlyInitAllData(double value);
+    void prepareWritingData();
+
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
     double m_radius;
     std::unique_ptr<SurfUnstructured> m_scaledDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_scaledNeutralMesh;
 
-    PiercedVector<double,long> m_disciplineData;
+    PiercedStorage<double,long> m_disciplineData;
+    PiercedStorage<double,long> m_neutralData;
 
     std::vector<std::string> m_inputDataNames;
     std::vector<std::string> m_outputDataNames;
@@ -74,6 +80,9 @@ private:
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;
+
+    std::unique_ptr<coupling::FieldStreamer> m_disciplineVTKFieldStreamer;
+    std::unique_ptr<coupling::FieldStreamer> m_neutralVTKFieldStreamer;
 
     //oldies
     std::unordered_map<long,int> computeStaticPartitionByMetis(SurfUnstructured & mesh);

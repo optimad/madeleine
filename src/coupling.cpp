@@ -123,11 +123,16 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     computeNeutralId2DisciplineCellPerRanks(); //compute dynamic m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks: from Nf to N_{D_Nf}
 
-
     buildScaledMeshes();
+    //ATTENTION from here on unit meshes should not be used anymore.
 
-//
-//    //Inizializza dati in parallelo
+    //Initialize data container
+    synchronizeMeshData();
+    uniformlyInitAllData(0.0);
+    //Set mesh VTK writer
+    //ATTENTION from here on scaled meshes are written with attached data, therefore data container have to be coherent with the relative mesh
+    prepareWritingData();
+
 
 #else
     m_unitDisciplineMesh->reset();
@@ -718,6 +723,48 @@ void MeshCoupling::buildScaledMeshes() {
     PiercedVector<Vertex> & neutralVertices = m_scaledNeutralMesh->getVertices();
     for(Vertex & v : neutralVertices) {
         v.scale(scaling,origin);
+    }
+
+}
+
+/*!
+    Synchronize each data container with relative mesh
+*/
+void MeshCoupling::synchronizeMeshData() {
+
+    m_disciplineData.setDynamicKernel(&(m_scaledDisciplineMesh->getCells()),PiercedVector<Cell>::SYNC_MODE_JOURNALED);
+    m_neutralData.setDynamicKernel(&(m_scaledNeutralMesh->getCells()),PiercedVector<Cell>::SYNC_MODE_JOURNALED);
+
+}
+
+/*!
+    Set all data container to the same uniform value
+*/
+void MeshCoupling::uniformlyInitAllData(double value) {
+
+    m_neutralData.fill(value);
+    m_disciplineData.fill(value);
+
+}
+
+/*!
+    Set VTK writer (name, counter and field to be written)
+*/
+void MeshCoupling::prepareWritingData() {
+
+    m_neutralVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledNeutralMesh.get()),m_neutralData,m_inputDataNames));
+    m_disciplineVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledDisciplineMesh.get()),m_disciplineData,m_outputDataNames));
+    m_scaledNeutralMesh->getVTK().setName("neutralMesh");
+    m_scaledNeutralMesh->getVTK().setCounter();
+    m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
+    for(const std::string & fieldName : m_neutralVTKFieldStreamer->getFieldNames()) {
+        m_scaledNeutralMesh->getVTK().addData<double>(fieldName, VTKFieldType::SCALAR, VTKLocation::CELL, m_neutralVTKFieldStreamer.get());
+    }
+    m_scaledDisciplineMesh->getVTK().setName("disciplineMesh");
+    m_scaledDisciplineMesh->getVTK().setCounter();
+    m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
+    for(const std::string & fieldName : m_disciplineVTKFieldStreamer->getFieldNames()) {
+        m_scaledDisciplineMesh->getVTK().addData<double>(fieldName, VTKFieldType::SCALAR, VTKLocation::CELL, m_disciplineVTKFieldStreamer.get());
     }
 
 }

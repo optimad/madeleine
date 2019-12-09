@@ -256,6 +256,48 @@ void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & i
 };
 
 
+/*!
+    Constructor
+
+    \param[in] patch the patch (mesh) to be written in VTK format with attached data
+    \param[in] scalarField
+*/
+FieldStreamer::FieldStreamer(const PatchKernel &patch, const PiercedStorage<double, long> &scalarField,std::vector<std::string> &fieldNames)
+: m_patch(patch), m_scalarField(scalarField),m_fieldNames(fieldNames)
+{
+};
+
+
+/*!
+    Virtual method specialization to define how the data have to be written
+
+    \param[in] stream the file stream used to write the VTK files
+    \param[in] name the name of the field to be written
+    \param[in] format the VTK format to write data
+*/
+void FieldStreamer::flushData(std::fstream &stream, const std::string & name, VTKFormat format)
+{
+
+    assert(format == VTKFormat::APPENDED);
+    BITPIT_UNUSED(format);
+
+    for(const std::string & fieldName : m_fieldNames) {
+        if(name == fieldName) {
+            for (const Cell &cell : m_patch.getVTKCellWriteRange()) {
+                long id = cell.getId();
+                genericIO::flushBINARY(stream, m_scalarField.at(id));
+            }
+        }
+    }
+
+};
+
+const std::vector<std::string> & FieldStreamer::getFieldNames() const{
+
+    return m_fieldNames;
+
+}
+
 }
 
 

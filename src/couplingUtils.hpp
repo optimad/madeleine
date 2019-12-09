@@ -27,6 +27,25 @@ void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<
 #if ENABLE_MPI==1
 void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & idRank,MPI_Comm comm = MPI_COMM_WORLD);
 #endif
+
+// Auxiliary class to export fields in VTK format.
+class FieldStreamer : public VTKBaseStreamer {
+
+public:
+
+    FieldStreamer(const PatchKernel &patch, const PiercedStorage<double, long> &scalarField,std::vector<std::string> &fieldNames);
+    void flushData(std::fstream &stream, const std::string & name, VTKFormat format);
+    const std::vector<std::string> & getFieldNames() const;
+
+private:
+
+    const PatchKernel &m_patch;
+    const PiercedStorage<double, long> &m_scalarField;
+    const std::vector<std::string> m_fieldNames;
+
+};
+
+
 }
 #endif /* SRC_COUPLINGUTILS_HPP_ */
 

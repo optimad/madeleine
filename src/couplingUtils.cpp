@@ -95,6 +95,64 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * from
 };
 
 /*!
+    Interpolate cell collocated data from the "fromMesh" to the "toMesh"
+
+    \param[in] fromMesh the interpolation origin mesh
+    \param[in] fromData the data of the origin to be interpolated (PiercedStorage)
+    \param[in] toMesh the interpolation destination mesh
+    \param[in] toData the interpolated data on the destination mesh (PiercedStorage)
+    \return the scaled mesh
+*/
+void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData){
+
+    log::cout() << "Interpolating... " << std::endl;
+
+    SurfaceSkdTree fromTree(fromMesh);
+    fromTree.build(1);
+
+    darray3 toCellCenter, neighCellCenter;
+    long toCellId, fromCellId;
+    double dist, weightSum, interpVal,cellCentersDist,weight;
+    std::vector<long> neighs;
+    PiercedVector<Cell>::iterator beginInternalCells = toMesh->internalBegin();
+    PiercedVector<Cell>::iterator endInternalCells = toMesh->internalEnd();
+    for(PiercedVector<Cell>::iterator itCell = beginInternalCells; itCell != endInternalCells; ++itCell) {
+        toCellId = itCell->getId();
+        toCellCenter = toMesh->evalCellCentroid(toCellId);
+
+        fromTree.findPointClosestCell(toCellCenter,&fromCellId,&dist);
+
+        //PArtitioning should ensure that all found cell are interior
+        assert(fromMesh->getCell(fromCellId).isInterior());
+
+        //Find neighbours of fromCell for interpolation
+        fromMesh->findCellNeighs(fromCellId,&neighs);
+
+        //Interpolation
+        weightSum = 0;
+        //fromCell contribution
+        neighCellCenter = fromMesh->evalCellCentroid(fromCellId);
+        cellCentersDist = norm2(neighCellCenter-toCellCenter);
+        weight = 1.0 / (cellCentersDist*cellCentersDist);
+        weightSum += weight;
+        interpVal += weight * fromData->at(fromCellId);
+        for(const long & neigh : neighs) {
+            neighCellCenter = fromMesh->evalCellCentroid(neigh);
+            cellCentersDist = norm2(neighCellCenter-toCellCenter);
+            weight = 1.0 / (cellCentersDist*cellCentersDist);
+            weightSum += weight;
+            interpVal += weight * fromData->at(neigh);
+        }
+        interpVal /= weightSum;
+
+        toData->set(toCellId,interpVal);
+    }
+
+};
+
+
+
+/*!
     Initialize a mesh-coherent PiercedVector Container with sin^2(sqrt(x_0^2+x_1^2+x_2^2))
 
     \param[in] mesh the mesh

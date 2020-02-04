@@ -93,8 +93,7 @@ void test00001( int argc, char *argv[] ) {
     //Make ONLY workers work
     if(workersComm != MPI_COMM_NULL) {
         MPI_Comm_rank(workersComm, &workRank);
-        std::vector<int> cellIndicesPerRank;
-        coupling::computeMeshFilePartitioning(neutralFilemesh,cellIndicesPerRank,workersComm);
+        std::vector<int> cellIndicesPerRank = coupling::computeMeshFilePartitioning(neutralFilemesh,workersComm);
         //
         coupling::MeshCoupling parallelToyDiscipline1(inputs,outputs,"toy1",workersComm);
 

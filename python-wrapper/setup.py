@@ -18,6 +18,8 @@ import sys
 try:
     imp.find_module('mpi4py')
     ENABLE_MPI4PY = 1
+    BITPIT_ENABLE_MPI = 1
+    ENABLE_MPI = 1
 except ImportError:
     ENABLE_MPI4PY = 0
     print("No module \"mpi4py\" found in your environment. We are " +
@@ -37,6 +39,9 @@ class build_ext(_build_ext):
     user_options.append(("bitpit-path=", "P", "bitpit path"))
     user_options.append(("madeleine-path=", "I", "madeleine path"))
     user_options.append(("mpi-include-path=", "M", "mpi include path"))
+    user_options.append(("metis-path=", "N", "metis path"))
+    user_options.append(("petsc-path=", "W", "petsc path"))
+    user_options.append(("lapack-path=", "L", "lapack path"))
     user_options.append(("extensions-source=", "E", "extensions source file"))
 
     def find_mpi_include_path(self):
@@ -87,6 +92,39 @@ class build_ext(_build_ext):
 
         return MADELEINE_PATH
 
+    def find_metis_path(self):
+        METIS_PATH = os.environ.get("METIS_PATH")
+
+        if (METIS_PATH is None):
+            print("Dude, no \"METIS_PATH\" env variable found. Please, " + 
+                  "check this out or enter it via shell.")
+
+            sys.exit(1)
+
+        return METIS_PATH
+
+    def find_petsc_path(self):
+        PETSC_PATH = os.environ.get("PETSC_PATH")
+
+        if (PETSC_PATH is None):
+            print("Dude, no \"PETSC_PATH\" env variable found. Please, " + 
+                  "check this out or enter it via shell.")
+
+            sys.exit(1)
+
+        return PETSC_PATH
+
+    def find_lapack_path(self):
+        LAPACK_PATH = os.environ.get("LAPACK_PATH")
+
+        if (LAPACK_PATH is None):
+            print("Dude, no \"LAPACK_PATH\" env variable found. Please, " + 
+                  "check this out or enter it via shell.")
+
+            sys.exit(1)
+
+        return LAPACK_PATH
+
 
     def check_extensions_source(self):
         if ((self.extensions_source is None) or 
@@ -103,6 +141,9 @@ class build_ext(_build_ext):
         # Initializing own new \"user_options\".
         self.bitpit_path = None
         self.madeleine_path = None
+        self.metis_path = None
+        self.petsc_path = None
+        self.lapack_path = None
         self.mpi_include_path = None
         self.extensions_source = None
 
@@ -119,6 +160,12 @@ class build_ext(_build_ext):
             self.bitpit_path = self.find_bipit_path()
         if (self.madeleine_path is None):
             self.madeleine_path = self.find_madeleine_path()
+        if (self.metis_path is None):
+            self.metis_path = self.find_metis_path()
+        if (self.petsc_path is None):
+            self.petsc_path = self.find_petsc_path()
+        if (self.lapack_path is None):
+            self.lapack_path = self.find_lapack_path()
 
         # Check if the source to pass at the \"Extension\" class is present and
         # finishes with \".pyx\".
@@ -133,22 +180,28 @@ class build_ext(_build_ext):
         os.environ["CXX"] = "c++"
         os.environ["CC"] = "gcc"
         BITPIT_ENABLE_MPI = 0
+        ENABLE_MPI = 1
         include_paths = [self.bitpit_path + "/include/bitpit/", self.madeleine_path + "../../src/"]
 
         mpi_lib = ""
         if ((not (not self.mpi_include_path)) and (ENABLE_MPI4PY)):
             BITPIT_ENABLE_MPI = 1
+            ENABLE_MPI = 1
             include_paths.append(self.mpi_include_path)
             os.environ["CXX"] = "mpic++"
-            os.environ["CC"] = "mpicc"
+            os.environ["CC"] = "mpic++"
             mpi_lib = re.sub("/include/","/lib/",self.mpi_include_path) + "libmpi.so"
+            #mpicxx_lib = re.sub("/include/","/lib/",self.mpi_include_path) + "libmpi_cxx.so"
+            print(mpi_lib)
 
         _extra_compile_args = ["-std=c++11",
                                "-g"        ,
                                "-O0"       ,
                                "-fPIC"     ,
+                               "-DVERBOSE=1",
                                #include_paths,
-                               "-DBITPIT_ENABLE_MPI=" + str(BITPIT_ENABLE_MPI)]
+                               "-DBITPIT_ENABLE_MPI=" + str(BITPIT_ENABLE_MPI),
+                               "-DENABLE_MPI=" + str(ENABLE_MPI)]
         _extra_link_args = ["-fPIC"] # Needed? We have already the same flag for 
                                      # the compiler args above.
         _cython_directives = {"boundscheck": False,
@@ -161,8 +214,11 @@ class build_ext(_build_ext):
             bitpit_lib = bitpit_lib + "libbitpit_MPI_D.so"
         else:
             bitpit_lib = bitpit_lib + "libbitpit_D.so"
-        madeleine_lib = self.madeleine_path + "libmadeleine.so"
-        _extra_objects = [mpi_lib, bitpit_lib, madeleine_lib, "-lxml2"]
+        madeleine_lib = self.madeleine_path + "libmadeleine_MPI_D.so"
+        metis_lib = self.metis_path + "libmetis.a"
+        petsc_lib = self.petsc_path + "libpetsc.so"
+        lapack_lib = self.lapack_path + "liblapacke.so"
+        _extra_objects = [madeleine_lib, bitpit_lib, petsc_lib, mpi_lib, metis_lib, lapack_lib, "-lxml2"]
 
 ##FINO QUI!
         #print(os.path.dirname(self.bitpit_include_path))
@@ -179,12 +235,12 @@ class build_ext(_build_ext):
                                 extra_compile_args = _extra_compile_args   ,
                                 extra_link_args = _extra_link_args         ,
                                 cython_directives = _cython_directives     , 
-                                language = _language                       ,
+                                language = 'c++'                       ,
                                 extra_objects = _extra_objects             ,
                                 include_dirs = _include_dirs               ,
                                 cython_compile_time_env = _cc_time_env     ,
                     )]
-        return cythonize(ext_modules,gdb_debug=True)
+        return cythonize(ext_modules,gdb_debug=True,verbose=True)
         #return ext_modules
 
 

@@ -258,8 +258,9 @@ void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<
     \param[in] comm the communicator used to partition the mesh
     \param[out] cellSizesPerRank a pointer to an empty long array provided by the user and filled with the cell indices for each rank.
 */
-void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & idRanks,MPI_Comm comm){
+std::vector<int> computeMeshFilePartitioning(const std::string meshFile,MPI_Comm comm){
 
+    std::vector<int> idRanks;
     //Ask communicator for its size
     int nofRanks;
     int rank;
@@ -311,6 +312,8 @@ void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & i
 //        MPI_Barrier(comm);
 //    }
 //    //DEBUG
+
+    return idRanks;
 };
 
 

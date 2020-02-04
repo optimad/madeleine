@@ -5,14 +5,17 @@ from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp cimport bool
 
+cimport mpi4py.MPI as MPI
+from mpi4py.libmpi cimport *
+
 cdef extern from "coupling.hpp" namespace "coupling":
     #ctypedef vector[string] svector
     
     cdef cppclass MeshCoupling:
-        MeshCoupling() except +
-        MeshCoupling(vector[string],vector[string]) except +
-        void initialize(string,string,double)
-        void compute(PiercedVector[double,long]*)
+        MeshCoupling(string,MPI_Comm) except +
+        MeshCoupling(vector[string],vector[string],string,MPI_Comm) except +
+        void initialize(string,string,double,vector[int]) except +
+        void compute(double * arr, size_t arrSize)
         void close()
         const SurfUnstructured * getNeutralMesh()
         size_t getNeutralMeshSize()
@@ -24,28 +27,36 @@ cdef class Py_MeshCoupling:
         thisptr = NULL
         cdef vector[string] inputs
         cdef vector[string] outputs
-        
+        cdef MPI_Comm mpi_comm
+                
         n_args =len(args)
         
         if(n_args == 0):
-            self.thisptr = new MeshCoupling()
-        elif(n_args == 2):
+            name = "dummy"
+            mpi_comm = (<MPI.Comm>MPI_COMM_WORLD).ob_mpi
+            self.thisptr = new MeshCoupling(name,mpi_comm)
+        elif(n_args == 4):
             for str in args[0]:
                 inputs.push_back(str)
             for str in args[1]:
                 outputs.push_back(str)
-            self.thisptr = new MeshCoupling(inputs,outputs)
+            name = args[2]
+            mpi_comm = (<MPI.Comm>args[3]).ob_mpi    
+            self.thisptr = new MeshCoupling(inputs,outputs,name,mpi_comm)
         else:
             print("Py_MeshCoupling, wrong number of arguments!")
             
     def __dealloc__(self):
         del self.thisptr
     
-    def initialize(self,unitDisciplineMeshFile,unitNeutralMeshFile,sphereRadius):
-        self.thisptr.initialize(<string&> unitDisciplineMeshFile, <string&> unitNeutralMeshFile,<double> sphereRadius)
+    def initialize(self,unitDisciplineMeshFile,unitNeutralMeshFile,sphereRadius, cellIndicesPerRank):
+        self.thisptr.initialize(<string&> unitDisciplineMeshFile, <string&> unitNeutralMeshFile,<double> sphereRadius, <const vector[int]&> cellIndicesPerRank)
     
-    def compute(self,Py_PiercedVector neutralData):
-        self.thisptr.compute(<PiercedVector[double,long]*><void*> neutralData.thisptr)
+    def compute(self,neutralData):
+        if not neutralData.flags['C_CONTIGUOUS']:
+            neutralData = np.ascontiguousarray(neutralData)
+        cdef double[::1] arr_memview = neutralData
+        self.thisptr.compute(&arr_memview[0],neutralData.shape[0])
 
     def close(self):
         self.thisptr.close()

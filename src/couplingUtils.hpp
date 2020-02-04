@@ -25,7 +25,7 @@ void moveDataOnMeshToArray(SurfUnstructured * mesh, PiercedVector<double>* data,
 void writeMesh(SurfUnstructured * mesh,std::string filename);
 void writeData(SurfUnstructured * mesh,std::string filename,const PiercedVector<double> * data,const std::vector<std::string> & dataNames);
 #if ENABLE_MPI==1
-void computeMeshFilePartitioning(const std::string meshFile,std::vector<int> & idRank,MPI_Comm comm = MPI_COMM_WORLD);
+std::vector<int> computeMeshFilePartitioning(const std::string meshFile,MPI_Comm comm = MPI_COMM_WORLD);
 #endif
 
 // Auxiliary class to export fields in VTK format.

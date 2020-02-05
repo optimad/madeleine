@@ -35,6 +35,7 @@ def Py_computeMeshFilePartitioning(meshFile,MPI.Comm comm):
     mpi_comm = comm.ob_mpi    
     #filename = meshFile
     cellIndicesPerRank = computeMeshFilePartitioning(<string&> meshFile,mpi_comm)
-    cdef int[::1] view = <int[:cellIndicesPerRank.size()]> cellIndicesPerRank.data()
-    ret = np.asarrays(view)
+    #print(cellIndicesPerRank)
+    #cdef int[::1] view = <int[:cellIndicesPerRank.size()]> cellIndicesPerRank.data()
+    ret = np.asarray(cellIndicesPerRank)
     return ret

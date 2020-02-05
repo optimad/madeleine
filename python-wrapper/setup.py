@@ -215,7 +215,7 @@ class build_ext(_build_ext):
         else:
             bitpit_lib = bitpit_lib + "libbitpit_D.so"
         madeleine_lib = self.madeleine_path + "libmadeleine_MPI_D.so"
-        metis_lib = self.metis_path + "libmetis.a"
+        metis_lib = self.metis_path + "libmetis.so"
         petsc_lib = self.petsc_path + "libpetsc.so"
         lapack_lib = self.lapack_path + "liblapacke.so"
         _extra_objects = [madeleine_lib, bitpit_lib, petsc_lib, mpi_lib, metis_lib, lapack_lib, "-lxml2"]

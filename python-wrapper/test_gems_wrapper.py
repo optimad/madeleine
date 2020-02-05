@@ -9,17 +9,24 @@
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 
 import unittest
-from gems_wrapper import ToySphereDiscipline
 from numpy import ones
+
+from gems.parallel.core.mpi_manager import MPIManager, get_world_comm
+from gems_wrapper import ToySphereDiscipline
+
+COMM = get_world_comm()
+SIZE = COMM.size
 
 
 class TestGEMSWrapper(unittest.TestCase):
 
     def test_basic(self):
-        mesh_file = "../examples/data/unitSphere1.stl"
-        neutral_mesh_file = "../examples/data/unitSphere2.stl"
-        toy1 = ToySphereDiscipline("Sphere1", ["Forces"], ["Pressure"], mesh_file,
-                                   neutral_mesh_file, sphere_radius=1.0)
+        MPIManager().clear(0)
+        mesh_file = "../examples/data/unitSphere5.stl"
+        neutral_mesh_file = "../examples/data/unitSphere4.stl"
+        toy1 = ToySphereDiscipline("Sphere1", ["Forces"], ["Pressure"],
+                                   mesh_file, neutral_mesh_file,
+                                   sphere_radius=1.0, n_cpus=SIZE)
 
         neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
         toy1.execute({"Forces": ones(neutral_mesh_size)})
@@ -28,5 +35,4 @@ class TestGEMSWrapper(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

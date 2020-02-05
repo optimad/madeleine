@@ -299,10 +299,10 @@ size_t MeshCoupling::getNeutralMeshSize(){
 
 */
 void MeshCoupling::close(){
-    m_unitDisciplineMesh.reset(nullptr);
-    m_unitNeutralMesh.reset(nullptr);
-    m_scaledDisciplineMesh.reset(nullptr);
-    m_scaledNeutralMesh.reset(nullptr);
+//    m_unitDisciplineMesh.reset(nullptr);
+//    m_unitNeutralMesh.reset(nullptr);
+//    m_scaledDisciplineMesh.reset(nullptr);
+//    m_scaledNeutralMesh.reset(nullptr);
 };
 
 /*!

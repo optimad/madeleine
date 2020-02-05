@@ -170,8 +170,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         if(cell.isInterior()) {
             m_neutralData.set(id,neutralInputArray[counter]);
             m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
-        } else {
-            m_neutralData.set(id,-1);
+            ++counter;
         }
     }
 
@@ -223,6 +222,18 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         MPI_Barrier(m_comm);
         std::cout << std::flush;
     }
+
+
+    counter = 0;
+    for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
+        long id = cell.getId();
+        if(cell.isInterior()) {
+            neutralInputArray[counter] = m_neutralData.at(id);
+            //std::cout <<  m_neutralData.at(id) << std::endl;
+            ++counter;
+        }
+    }
+
 
 
 };

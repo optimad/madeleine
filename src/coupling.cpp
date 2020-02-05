@@ -950,13 +950,13 @@ void MeshCoupling::prepareWritingData() {
 
     m_neutralVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledNeutralMesh.get()),m_neutralData,m_inputDataNames));
     m_disciplineVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledDisciplineMesh.get()),m_disciplineData,m_outputDataNames));
-    m_scaledNeutralMesh->getVTK().setName("neutralMesh");
+    m_scaledNeutralMesh->getVTK().setName(m_name + "_neutralMesh");
     m_scaledNeutralMesh->getVTK().setCounter();
     m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
     for(const std::string & fieldName : m_neutralVTKFieldStreamer->getFieldNames()) {
         m_scaledNeutralMesh->getVTK().addData<double>(fieldName, VTKFieldType::SCALAR, VTKLocation::CELL, m_neutralVTKFieldStreamer.get());
     }
-    m_scaledDisciplineMesh->getVTK().setName("disciplineMesh");
+    m_scaledDisciplineMesh->getVTK().setName(m_name + "_disciplineMesh");
     m_scaledDisciplineMesh->getVTK().setCounter();
     m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
     for(const std::string & fieldName : m_disciplineVTKFieldStreamer->getFieldNames()) {

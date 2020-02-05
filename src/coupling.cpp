@@ -169,7 +169,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         long id = cell.getId();
         if(cell.isInterior()) {
             m_neutralData.set(id,neutralInputArray[counter]);
-            m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
+            //m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
             ++counter;
         }
     }

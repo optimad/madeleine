@@ -278,7 +278,7 @@ SurfUnstructured* MeshCoupling::getNeutralMesh(){
 */
 size_t MeshCoupling::getNeutralMeshSize(){
 
-    return m_scaledNeutralMesh.get()->getVertices().size();
+    return m_scaledNeutralMesh->getInternalCount();
 
 };
 

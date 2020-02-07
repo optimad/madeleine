@@ -18,13 +18,14 @@ import coupling
 class ToySphereDiscipline(MDODiscipline):
 
     def __init__(self, name, inputs, outputs, mesh_file,
-                 neutral_mesh_file, sphere_radius=1.0, n_cpus=1):
+                 neutral_mesh_file, sphere_radius=1.0, n_cpus=1, kernel=1):
 
         self.inputs = inputs
         self.outputs = outputs
         self.mesh_file = mesh_file
         self.neutral_mesh_file = neutral_mesh_file
         self.sphere_radius = sphere_radius
+        self.kernel = kernel
 
         super(ToySphereDiscipline, self).__init__(name)
 
@@ -75,8 +76,11 @@ class ToySphereDiscipline(MDODiscipline):
                                                           name,
                                                           comm)
 
-            self.mesh_coupling.initialize(mesh_file, neutral_mesh_file,
-                                          sphere_radius, cell_indices_per_rank)
+            self.mesh_coupling.initialize(mesh_file,
+                                          neutral_mesh_file,
+                                          sphere_radius,
+                                          cell_indices_per_rank,
+                                          self.kernel)
 
     def _run(self):
         input_vector = self.local_data[self.inputs[0]]
@@ -86,7 +90,6 @@ class ToySphereDiscipline(MDODiscipline):
         r = comm.bcast(r, root=0)
 
         # self.mesh_coupling.set_radius(r)
-
         self.mesh_coupling.compute(input_vector)
         output = {self.outputs[0]: input_vector}
         self.store_local_data(**output)

@@ -44,18 +44,18 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     strcpy(workers_comm_name_char,workers_comm_name.c_str());
     MPI_Comm_set_name(m_comm,workers_comm_name_char);
 
-    char worldnameout[MPI_MAX_OBJECT_NAME];
-    char workersnameout[MPI_MAX_OBJECT_NAME];
-    int rlen;
-    MPI_Comm_get_name( MPI_COMM_WORLD, worldnameout, &rlen );
-    MPI_Comm_get_name( m_comm, workersnameout, &rlen );
-    std::string workersName(workersnameout);
-    std::string worldName(worldnameout);
-    int worldSize;
-    int worldRank;
-    MPI_Comm_size(MPI_COMM_WORLD,&worldSize);
-    MPI_Comm_rank(MPI_COMM_WORLD,&worldRank);
-    std::cout << "I'm " << m_rank << " of " << m_nprocs  << " on " << workersName  << " and " << worldRank << " of " << worldSize << " on " << worldName << std::endl;
+    /* char worldnameout[MPI_MAX_OBJECT_NAME]; */
+    /* char workersnameout[MPI_MAX_OBJECT_NAME]; */
+    /* int rlen; */
+    /* MPI_Comm_get_name( MPI_COMM_WORLD, worldnameout, &rlen ); */
+    /* MPI_Comm_get_name( m_comm, workersnameout, &rlen ); */
+    /* std::string workersName(workersnameout); */
+    /* std::string worldName(worldnameout); */
+    /* int worldSize; */
+    /* int worldRank; */
+    /* MPI_Comm_size(MPI_COMM_WORLD,&worldSize); */
+    /* MPI_Comm_rank(MPI_COMM_WORLD,&worldRank); */
+    /* std::cout << "I'm " << m_rank << " of " << m_nprocs  << " on " << workersName  << " and " << worldRank << " of " << worldSize << " on " << worldName << std::endl; */
 
     m_neutralTag = 0;
     m_disciplineTag = 0;
@@ -86,6 +86,12 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
     m_outputDataNames = outputNames;
 };
 
+
+void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double radius, const std::vector<int> & globalNeutralId2MeshFileRank){
+    int kernel = 1;
+    initialize(unitDisciplineMeshFile, unitNeutralMeshFile, radius, globalNeutralId2MeshFileRank, kernel);
+}
+
 /*!
     Initialize the unit sphere meshes, the radius and the radius scaled meshes. m_disciplineData is initialize to zero.
 
@@ -93,10 +99,12 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
     \param[in] unitNeutralMeshFile is the name of the file (.stl) containing the neutral mesh of the unit sphere
     \param[in] radius is the value of the radius of the sphere discretized by the scaled meshes
 */
-void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double radius, const std::vector<int> & globalNeutralId2MeshFileRank){
+void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double radius, const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
     m_radius = radius;
+
+    m_kernel = kernel;
 
     //initialize mesh file names
     m_disciplineMeshFileName = unitDisciplineMeshFile;
@@ -157,8 +165,9 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     \param[in] neutralInputArray contiguous C-array from NUMPY array ordered like id-ordered cells in Nf mesh file partitioning
 */
-void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
 
+
+void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
     log::cout() << "First Interpolation" << std::endl;
     //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning
     m_scaledNeutralMesh->sortCells();
@@ -186,7 +195,14 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
     //Update discipline ghost cell values
     updateDisciplineGhosts();
 
-    disciplineKernel();
+    if (m_kernel == 1){
+        disciplineKernel1();
+    	std::cout << "Running Kernel 1" << std::endl;
+	}
+    else{
+    	std::cout << "Running Kernel 2" << std::endl;
+	disciplineKernel2();
+    }
 
     std::string name = "Nf";
     m_scaledNeutralMesh->write(name);
@@ -211,9 +227,9 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         if(m_rank == r) {
             for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
                 if(cell.isInterior()) {
-                    std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                    /* std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl; */
                 } else {
-                    std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_scaledNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl;
+                    /* std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_scaledNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl; */
                 }
                 std::cout << std::flush;
             }
@@ -233,7 +249,6 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
             ++counter;
         }
     }
-
 
 
 };
@@ -1039,9 +1054,31 @@ void MeshCoupling::updateDisciplineGhosts() {
 /*!
     Use inputs and radius to perform computation on discipline mesh
 */
-void MeshCoupling::disciplineKernel() {
+void MeshCoupling::disciplineKernel1() {
+    float res = 0;
+    std::size_t counter = 0;
+    for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+        long id = cell.getId();
+        if(cell.isInterior()) {
+	    res = 1 - 0.4*m_disciplineData.at(id);
+            m_disciplineData.set(id,res);
+            ++counter;
+        }
+    }
+    updateDisciplineGhosts();
+}
 
-
+void MeshCoupling::disciplineKernel2() {
+    float res = 0;
+    std::size_t counter = 0;
+    for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+        long id = cell.getId();
+        if(cell.isInterior()) {
+	    res = m_disciplineData.at(id);
+            m_disciplineData.set(id,res);
+            ++counter;
+        }
+    }
 
 
     updateDisciplineGhosts();

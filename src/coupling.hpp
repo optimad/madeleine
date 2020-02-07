@@ -38,6 +38,7 @@ public:
     MeshCoupling(std::string disciplineName = "defaultDiscipline");
     MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName);
 #endif
+    void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius, const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius, const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size);
     const std::vector<std::string> & getInputDataNames();
@@ -73,7 +74,8 @@ private:
     void updateNeutralGhosts();
     void updateDisciplineGhosts();
 
-    void disciplineKernel();
+    void disciplineKernel1();
+    void disciplineKernel2();
 
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
@@ -88,6 +90,8 @@ private:
     std::vector<std::string> m_outputDataNames;
 
     std::string m_name;
+
+    int m_kernel;
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;

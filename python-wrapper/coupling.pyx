@@ -9,62 +9,66 @@ cimport mpi4py.MPI as MPI
 from mpi4py.libmpi cimport *
 
 cdef extern from "coupling.hpp" namespace "coupling":
-    #ctypedef vector[string] svector
-    
+    # ctypedef vector[string] svector
+
     cdef cppclass MeshCoupling:
-        MeshCoupling(string,MPI_Comm) except +
-        MeshCoupling(vector[string],vector[string],string,MPI_Comm) except +
-        void initialize(string,string,double,vector[int]) except +
+        MeshCoupling(string, MPI_Comm) except +
+        MeshCoupling(vector[string], vector[string], string, MPI_Comm) except +
+        void initialize(string, string, double, vector[int], int) except +
         void compute(double * arr, size_t arrSize)
         void close()
         const SurfUnstructured * getNeutralMesh()
         size_t getNeutralMeshSize()
-        
+
 cdef class Py_MeshCoupling:
-    cdef MeshCoupling* thisptr
-    
-    def __cinit__(self,*args):
+    cdef MeshCoupling * thisptr
+
+    def __cinit__(self, *args):
         thisptr = NULL
         cdef vector[string] inputs
         cdef vector[string] outputs
         cdef MPI_Comm mpi_comm
-                
-        n_args =len(args)
-        
+
+        n_args = len(args)
+
         if(n_args == 0):
             name = "dummy"
-            mpi_comm = (<MPI.Comm>MPI_COMM_WORLD).ob_mpi
-            self.thisptr = new MeshCoupling(name,mpi_comm)
+            mpi_comm = ( < MPI.Comm > MPI_COMM_WORLD).ob_mpi
+            self.thisptr = new MeshCoupling(name, mpi_comm)
         elif(n_args == 4):
             for str in args[0]:
                 inputs.push_back(str)
             for str in args[1]:
                 outputs.push_back(str)
             name = args[2]
-            mpi_comm = (<MPI.Comm>args[3]).ob_mpi    
-            self.thisptr = new MeshCoupling(inputs,outputs,name,mpi_comm)
+            mpi_comm = ( < MPI.Comm > args[3]).ob_mpi
+            self.thisptr = new MeshCoupling(inputs, outputs, name, mpi_comm)
         else:
             print("Py_MeshCoupling, wrong number of arguments!")
-            
+
     def __dealloc__(self):
         del self.thisptr
-    
-    def initialize(self,unitDisciplineMeshFile,unitNeutralMeshFile,sphereRadius, cellIndicesPerRank):
-        self.thisptr.initialize(<string&> unitDisciplineMeshFile, <string&> unitNeutralMeshFile,<double> sphereRadius, <const vector[int]&> cellIndicesPerRank)
-    
-    def compute(self,neutralData):
+
+    def initialize(self, unitDisciplineMeshFile, unitNeutralMeshFile, sphereRadius, cellIndicesPerRank, kernel):
+        self.thisptr.initialize( < string&> unitDisciplineMeshFile,
+                                < string & > unitNeutralMeshFile,
+                                < double > sphereRadius,
+                                < const vector[int] & > cellIndicesPerRank,
+                                < int > kernel)
+
+    def compute(self, neutralData):
         if not neutralData.flags['C_CONTIGUOUS']:
             neutralData = np.ascontiguousarray(neutralData)
         cdef double[::1] arr_memview = neutralData
-        self.thisptr.compute(&arr_memview[0],neutralData.shape[0])
+        self.thisptr.compute(& arr_memview[0], neutralData.shape[0])
 
     def close(self):
         self.thisptr.close()
 
     def getNeutralMesh(self):
-        cdef uintptr_t int_ptr = <uintptr_t>(<MeshCoupling*><void*>self.thisptr)[0].getNeutralMesh()
+        cdef uintptr_t int_ptr = <uintptr_t > ( < MeshCoupling*> < void*>self.thisptr)[0].getNeutralMesh()
         py_mesh = Py_SharedSurfUnstructured(int_ptr)
         return py_mesh
 
     def getNeutralMeshSize(self):
-        return (<MeshCoupling*><void*>self.thisptr)[0].getNeutralMeshSize()
+        return ( < MeshCoupling*> < void*>self.thisptr)[0].getNeutralMeshSize()

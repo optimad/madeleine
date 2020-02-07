@@ -250,6 +250,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         }
     }
 
+    m_neutralNumberingInfo.update();
 
 };
 
@@ -765,7 +766,7 @@ void MeshCoupling::buildScaledMeshes() {
     for(Vertex & v : neutralVertices) {
         v.scale(scaling,origin);
     }
-
+    m_neutralNumberingInfo = PatchNumberingInfo(m_scaledNeutralMesh.get());
 }
 
 /*!
@@ -1084,6 +1085,42 @@ void MeshCoupling::disciplineKernel2() {
     updateDisciplineGhosts();
 }
 
+/*!
+    Compute row elements of the Jacobian Matrix to be passed to PETSc
+    \param[in] cellId the local cell id
+    \param[out] cellGlobalId a global consecutive id to be used in PETSc
+    \param[out] columnIds a vector long containing the indices of non-zero elements in the matrix row relative to cellGlobalId
+    \param[out] columnValues a vector double containing the values of non-zero elements in the matrix row relative to cellGlobalId
+*/
+void MeshCoupling::computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues) {
+
+    columnIds.clear();
+    columnValues.clear();
+    cellGlobalId = m_neutralNumberingInfo.getCellConsecutiveId(cellId);
+
+    //Fake Jacobian line to be modified - at the moment matrix row element values correspond to cell global indices
+    std::vector<long> neighs;
+    m_scaledNeutralMesh->findCellNeighs(cellId,&neighs);
+    columnIds.reserve(neighs.size());
+    columnValues.reserve(neighs.size());
+    for(long & neigh : neighs) {
+        long globalNeigh = m_neutralNumberingInfo.getCellConsecutiveId(neigh);
+        columnIds.push_back(globalNeigh);
+        columnValues.push_back(globalNeigh);
+    }
+
+
+}
+
+/*!
+    Get the information structure on neutral mesh elements numbering
+    \return a PatchNumberingInfo for the scaled neutral mesh
+*/
+const PatchNumberingInfo & MeshCoupling::getNeutraNumberingInfo() {
+
+    return m_neutralNumberingInfo;
+
+}
 
 }
 

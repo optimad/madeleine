@@ -19,6 +19,7 @@ cdef extern from "coupling.hpp" namespace "coupling":
         void close()
         const SurfUnstructured * getNeutralMesh()
         size_t getNeutralMeshSize()
+        void computeJacobianRow(long,long,vector[long],vector[double])
 
 cdef class Py_MeshCoupling:
     cdef MeshCoupling * thisptr
@@ -72,3 +73,12 @@ cdef class Py_MeshCoupling:
 
     def getNeutralMeshSize(self):
         return ( < MeshCoupling*> < void*>self.thisptr)[0].getNeutralMeshSize()
+
+    def computeJacobianRow(self,long cellId):
+        cdef vector[long] columnIds
+        cdef long cellGlobalId = 0
+        cdef vector[double] columnValues
+        self.thisptr.computeJacobianRow(cellId,<long&> cellGlobalId,<vector[long]&> columnIds, <vector[double]&> columnValues)
+        retIds = np.asarray(columnIds)
+        retValues = np.asarray(columnValues)
+        return cellGlobalId,retIds,retValues

@@ -47,6 +47,7 @@ public:
     SurfUnstructured * getNeutralMesh();
     size_t getNeutralMeshSize();
     void close();
+    void computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
 
 private:
     void readUnitDisciplineMesh();
@@ -76,12 +77,14 @@ private:
 
     void disciplineKernel1();
     void disciplineKernel2();
+    const PatchNumberingInfo & getNeutraNumberingInfo();
 
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
     double m_radius;
     std::unique_ptr<SurfUnstructured> m_scaledDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_scaledNeutralMesh;
+    PatchNumberingInfo m_neutralNumberingInfo;
 
     PiercedStorage<double,long> m_disciplineData;
     PiercedStorage<double,long> m_neutralData;

@@ -96,3 +96,7 @@ class ToySphereDiscipline(MDODiscipline):
 
     def close(self):
         self.mesh_coupling.close()
+
+    def _compute_jacobian(self, inputs=None, outputs=None):
+        self.get_input_data_names()
+        self.get_output_data_names()

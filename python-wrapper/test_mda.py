@@ -27,20 +27,22 @@ class TestGEMSWrapper(unittest.TestCase):
 
         toy1 = ToySphereDiscipline("Sphere1", ["Forces"], ["Pressure"], mesh_file,
                                    neutral_mesh_file, sphere_radius=1.0,
-                                   n_cpus=2)
+                                   n_cpus=2, kernel=1)
 
         toy2 = ToySphereDiscipline("Sphere2", ["Pressure"], ["Forces"], mesh_file,
                                    neutral_mesh_file, sphere_radius=1.0,
-                                   n_cpus=3)
+                                   n_cpus=3, kernel=2)
 
         disciplines = [toy1, toy2]
-
+        acceleration = None
+        # acceleration = ParallelMDAJacobi.SECANT_ACCELERATION
+        # acceleration = ParallelMDAJacobi.M2D_ACCELERATION
         mda = ParallelMDAJacobi(
             disciplines=disciplines,
             name="mda",
             max_mda_iter=200,
-            tolerance=1e-6,
-            acceleration=ParallelMDAJacobi.SECANT_ACCELERATION,
+            tolerance=1e-9,
+            acceleration=acceleration,
         )
 
         default_inputs = mda.default_inputs
@@ -48,8 +50,8 @@ class TestGEMSWrapper(unittest.TestCase):
         if mda.execution_context.is_rank_on_mpi_group():
             r = ones(1)
             size_forces = default_inputs['Forces'].shape[0]
-            forces = ones(size_forces)*0.03
-            pressure = ones(size_forces)*0.05
+            forces = ones(size_forces)*0.01
+            pressure = ones(size_forces)*0.01
             inputs = {'r': r, 'Forces': forces, 'Pressure': pressure}
 
         out = mda.execute(inputs)

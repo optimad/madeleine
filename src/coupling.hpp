@@ -46,6 +46,8 @@ public:
     const SurfUnstructured * getDisciplineMesh();
     SurfUnstructured * getNeutralMesh();
     size_t getNeutralMeshSize();
+    long getNeutralFirstCellId();
+    long getNeutralGlobalConsecutiveId(long id);
     void close();
     void computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
 

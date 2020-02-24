@@ -245,7 +245,6 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
         long id = cell.getId();
         if(cell.isInterior()) {
             neutralInputArray[counter] = m_neutralData.at(id);
-            //std::cout <<  m_neutralData.at(id) << std::endl;
             ++counter;
         }
     }
@@ -299,15 +298,28 @@ SurfUnstructured* MeshCoupling::getNeutralMesh(){
 };
 
 /*!
-    Get scaled neutral mesh
+    Get scaled neutral mesh number of internal cells
 
-    \return the scaled neutral mesh
+    \return the scaled neutral mesh size
 */
 size_t MeshCoupling::getNeutralMeshSize(){
 
     return m_scaledNeutralMesh->getInternalCount();
 
 };
+
+
+/*!
+    Get scaled neutral mesh first cell Id
+
+    \return the scaled neutral mesh first id
+*/
+long MeshCoupling::getNeutralFirstCellId(){
+
+    return m_scaledNeutralMesh->getCells().front().getId();
+
+};
+
 
 
 /*!
@@ -830,7 +842,6 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscip
 
     //Communicate exchanged cell values during partitioning
     size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
-    std::cout << "size single cell " << singleCellByteSize << std::endl;
     for(auto info : partitionInfo) {
 
         int sendRank = info.rank;
@@ -896,7 +907,6 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshWithData() {
 
     //Communicate exchanged cell values during partitioning
     size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
-    std::cout << "size single cell " << singleCellByteSize << std::endl;
     for(auto info : partitionInfo) {
 
         int sendRank = info.rank;
@@ -1094,9 +1104,10 @@ void MeshCoupling::disciplineKernel2() {
 */
 void MeshCoupling::computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues) {
 
+
     columnIds.clear();
     columnValues.clear();
-    cellGlobalId = m_neutralNumberingInfo.getCellConsecutiveId(cellId);
+    cellGlobalId = getNeutralGlobalConsecutiveId(cellId);
 
     //Fake Jacobian line to be modified - at the moment matrix row element values correspond to cell global indices
     std::vector<long> neighs;
@@ -1121,6 +1132,16 @@ const PatchNumberingInfo & MeshCoupling::getNeutraNumberingInfo() {
     return m_neutralNumberingInfo;
 
 }
+
+/*!
+    Get the global consecutive index of a neutral mesh cell from PatchNumberingInfo
+    \param[in] id local index of the cell
+    \return the global consecutive index for cell with local index id
+*/
+long MeshCoupling::getNeutralGlobalConsecutiveId(long id){
+    return m_neutralNumberingInfo.getCellConsecutiveId(id);
+}
+
 
 }
 

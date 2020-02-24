@@ -23,4 +23,4 @@ python-wrapper/exportVariables
 *vtu
 *.log
 *.pyc
-
+*.dat

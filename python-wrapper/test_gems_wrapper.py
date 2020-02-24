@@ -30,7 +30,7 @@ class TestGEMSWrapper(unittest.TestCase):
 
         neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
         toy1.execute({"Forces": ones(neutral_mesh_size)})
-
+        toy1._compute_jacobian()
         toy1.close()
 
 

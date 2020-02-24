@@ -81,8 +81,8 @@ cdef class Py_MeshCoupling:
         cdef long cellGlobalId = 0
         cdef vector[double] columnValues
         self.thisptr.computeJacobianRow(cellId,<long&> cellGlobalId,<vector[long]&> columnIds, <vector[double]&> columnValues)
-        retIds = np.asarray(columnIds)
-        retValues = np.asarray(columnValues)
+        retIds = np.asarray(columnIds,dtype=np.int32)
+        retValues = np.asarray(columnValues,dtype=np.float64)
         return cellGlobalId,retIds,retValues
 
     def getNeutralFirstCellId(self):

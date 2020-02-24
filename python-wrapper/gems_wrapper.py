@@ -9,6 +9,8 @@
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 from numpy import ones
 
+from petsc4py import PETSc
+
 from gems.core.discipline import MDODiscipline
 from gems.parallel.api import create_execution_context, create_user_partition
 from gems.parallel.core.mpi_manager import get_world_comm
@@ -98,5 +100,40 @@ class ToySphereDiscipline(MDODiscipline):
         self.mesh_coupling.close()
 
     def _compute_jacobian(self, inputs=None, outputs=None):
-        self.get_input_data_names()
-        self.get_output_data_names()
+        inputs = self.get_input_data_names()
+        outputs = self.get_output_data_names()
+
+        # Compute global number of neutral cell
+        nofNeutralLocalCells = self.mesh_coupling.getNeutralMeshSize()
+        comm = self.execution_context.comm
+        nofNeutralGlobalCells = comm.allreduce(nofNeutralLocalCells)
+
+        # Initialize Jacobian matrices
+        self._init_jacobian(with_zeros=True)
+        self.jac['Pressure'] = {}
+        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm)
+        mat.setUp()
+
+        beginId = self.mesh_coupling.getNeutralFirstCellId()
+        for i in range(beginId,beginId+nofNeutralLocalCells):
+            rowId,colIds,values = self.mesh_coupling.computeJacobianRow(i)
+            rowIds = [rowId]
+            #CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
+            mat.setValues(rowIds,colIds,values, addv=1)
+
+        mat.assemblyBegin()
+        mat.assemblyEnd()
+        self.jac['Pressure']['Forces'] = mat
+        viewer = PETSc.Viewer().createASCII("ForcesJac.dat",mode=1,comm=comm)
+        viewer.view(self.jac['Pressure']['Forces'])
+
+        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,1,comm=comm)
+        mat.setUp()
+        for i in range(beginId,beginId+nofNeutralLocalCells):
+            mat.setValue(self.mesh_coupling.getNeutralGlobalConsecutiveId(i),0,i, addv=1)
+        mat.assemblyBegin()
+        mat.assemblyEnd()
+        self.jac['Pressure']['r'] = mat
+
+        viewer = PETSc.Viewer().createASCII("RadiusJac.dat",mode=1,comm=comm)
+        viewer.view(self.jac['Pressure']['r'])

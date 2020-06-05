@@ -19,6 +19,8 @@
 #include <bitpit_common.hpp>
 #include <bitpit_IO.hpp>
 #include <bitpit_CG.hpp>
+#include <bitpit_discretization.hpp>
+#include <bitpit_LA.hpp>
 #include <bitpit_surfunstructured.hpp>
 #include "commons.hpp"
 #include "couplingUtils.hpp"
@@ -33,13 +35,18 @@ class MeshCoupling{
 public:
 #if ENABLE_MPI==1
     MeshCoupling(std::string disciplineName = "defaultDiscipline", MPI_Comm = MPI_COMM_WORLD);
-    MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName, MPI_Comm = MPI_COMM_WORLD);
+    MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName,
+            MPI_Comm = MPI_COMM_WORLD);
 #else
     MeshCoupling(std::string disciplineName = "defaultDiscipline");
     MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName);
 #endif
-    void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius, const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
-    void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double sphereRadius, const std::vector<int> & globalNeutralId2MeshFileRank);
+    void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
+            double sphereRadius, double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
+    void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
+            double sphereRadius, double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size);
     const std::vector<std::string> & getInputDataNames();
     const std::vector<std::string> & getOutputDataNames();
@@ -87,6 +94,7 @@ private:
     std::unique_ptr<SurfUnstructured> m_scaledDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_scaledNeutralMesh;
     PatchNumberingInfo m_neutralNumberingInfo;
+    PatchNumberingInfo m_disciplineNumberingInfo;
 
     PiercedStorage<double,long> m_disciplineData;
     PiercedStorage<double,long> m_neutralData;
@@ -97,6 +105,17 @@ private:
     std::string m_name;
 
     int m_kernel;
+    std::unique_ptr<StencilScalarSolver> m_system;
+    double m_thickness;
+    bool m_innerSphere;
+    double m_sourceMaxIntensity;
+    std::array<double,3> m_sourceDirection;
+    double evalThermalDiffusivity();
+    void assemblySimplifiedDiscreteHelmholtzSystem();
+    void prepareSystemRHS();
+    void computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilScalar> & laplaceStencils);
+    void computeHelmholtzStencilsFromLaplaceStencils(std::vector<StencilScalar> & helmoltzStencils, const double & coefficient);
+    double evalSourceIntensity(const std::array<double,3> & cellNormal);
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;

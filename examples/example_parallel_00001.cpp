@@ -69,7 +69,11 @@ void test00001( int argc, char *argv[] ) {
     MPI_Comm_group(MPI_COMM_WORLD, &worldGroup);
 
     //Select worker ranks in reduced communicator
-    int nofRankInWorkGroup = nProcessors != 1 ? nProcessors - 1 : 1;
+    //int nofRankInWorkGroup = nProcessors != 1 ? nProcessors - 1 : 1;
+    // PetscInitiliaze is called by bitpit mostly to pass custom arguments to petsc. PetscInitialize must be called by all the processes
+    // If called from outside, bitpit cannot customize the linear solver using PETSc command-line arguments.
+    // The default solver in bitpit is GMRES with ASM global preconditioner and sub-block ILU preconditioner
+    int nofRankInWorkGroup = nProcessors;
     int *ranks = new int[nofRankInWorkGroup];
     for(int i = 0; i < nofRankInWorkGroup; ++i) {
         ranks[i] = i;
@@ -97,12 +101,14 @@ void test00001( int argc, char *argv[] ) {
         //
         coupling::MeshCoupling parallelToyDiscipline1(inputs,outputs,"toy1",workersComm);
 
-        parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,2.0,cellIndicesPerRank);
+        parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,2.0,1.0,false,1.0,{{1.0,0.0,0.0}},cellIndicesPerRank);
         //
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);
+/*
         std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),workRank);
         parallelToyDiscipline1.compute(neutralData.data(),neutralData.size());
+*/
         //
         //    parallelToyDiscipline.close();
     }

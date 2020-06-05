@@ -13,6 +13,7 @@
 #include "coupling.hpp"
 #include "couplingUtils.hpp"
 #include <fstream>
+#include <bitpit_operators.hpp>
 
 using namespace bitpit;
 
@@ -23,10 +24,14 @@ namespace coupling{
 */
 #if ENABLE_MPI==1
 MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
-        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0), m_name(disciplineName)
+        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0),
+        m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
+        m_sourceDirection({{1.0,0.0,0.0}})
 #else
 MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
-        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0), m_name(disciplineName)
+        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0),
+        m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
+        m_sourceDirection({{1.0,0.0,0.0}})
 #endif
 {
 #if ENABLE_MPI==1
@@ -66,6 +71,7 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
     m_rank = 0;
     m_nprocs = 1;
 #endif
+    m_kernel = -1;
 };
 
 /*!
@@ -84,12 +90,16 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 {
     m_inputDataNames = inputNames;
     m_outputDataNames = outputNames;
+    m_system = std::unique_ptr<StencilScalarSolver>(new StencilScalarSolver(disciplineName,false));
 };
 
 
-void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double radius, const std::vector<int> & globalNeutralId2MeshFileRank){
+void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
+        double radius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        const std::vector<int> & globalNeutralId2MeshFileRank){
     int kernel = 1;
-    initialize(unitDisciplineMeshFile, unitNeutralMeshFile, radius, globalNeutralId2MeshFileRank, kernel);
+    initialize(unitDisciplineMeshFile, unitNeutralMeshFile, radius, thickness, innerSphere, sourceIntensity, sourceDirection,
+            globalNeutralId2MeshFileRank, kernel);
 }
 
 /*!
@@ -98,11 +108,21 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     \param[in] unitDisciplineMeshFile is the name of the file (.stl) containing the discipline mesh of the unit sphere
     \param[in] unitNeutralMeshFile is the name of the file (.stl) containing the neutral mesh of the unit sphere
     \param[in] radius is the value of the radius of the sphere discretized by the scaled meshes
+    \param[in] thickness is the value of the radius of the sphere discretized by the scaled meshes
+    \param[in] innerSphere is true if the discipline surface is the inner one
+    \param[in] sourceIntensity is the value of the external constant source flux intensity (only for outer discipline)
+    \param[in] sourceDirection is an array for the direction of the external constant source flux
 */
-void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile, double radius, const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
+void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
+        double radius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
     m_radius = radius;
+    m_thickness = thickness;
+    m_innerSphere = innerSphere;
+    m_sourceMaxIntensity = sourceIntensity;
+    m_sourceDirection = sourceDirection/norm2(sourceDirection);
 
     m_kernel = kernel;
 
@@ -150,6 +170,12 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     std::string name = "D_Nf";
     m_scaledDisciplineMesh->write(name);
 
+    //Prepare Linear System
+    //Matrix
+    assemblySimplifiedDiscreteHelmholtzSystem();
+    prepareSystemRHS();
+
+
 #else
     m_unitDisciplineMesh->reset();
     m_disciplineData.clear(true);
@@ -174,6 +200,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
 
     //put data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
     std::size_t counter = 0;
+    assert(size == m_scaledNeutralMesh->getInternalCount());
     for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
         if(cell.isInterior()) {
@@ -771,6 +798,7 @@ void MeshCoupling::buildScaledMeshes() {
     for(Vertex &v : disciplineVertices) {
         v.scale(scaling,origin);
     }
+    m_disciplineNumberingInfo = PatchNumberingInfo(m_scaledDisciplineMesh.get());
 
     //neutral
     m_scaledNeutralMesh = PatchKernel::clone(m_unitNeutralMesh.get());
@@ -1143,6 +1171,161 @@ long MeshCoupling::getNeutralGlobalConsecutiveId(long id){
 }
 
 
+/*!
+    Assemble the linear system matrix for a simplified version of the discrete Helmoltz operator
+*/
+void MeshCoupling::assemblySimplifiedDiscreteHelmholtzSystem() {
+
+    std::vector<StencilScalar> helmoltzStencils(getDisciplineMesh()->getInternalCount());
+    computeSimplifiedDiscreteLaplaceStencils(helmoltzStencils);
+    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
+    if(!m_innerSphere) {
+        computeHelmholtzStencilsFromLaplaceStencils(helmoltzStencils, coefficient);
+    }
+    KSPOptions &solverOptions = m_system->getKSPOptions();
+    solverOptions.rtol    = 1e-7;//set PETSc KSP global tolerance
+    solverOptions.subrtol = 1e-7;//set PETSc blocks tolerance
+    m_system->assembly(m_scaledDisciplineMesh->getCommunicator(),m_scaledDisciplineMesh->isPartitioned(),helmoltzStencils);
+
 }
 
+/*!
+    Compute the linear system matrix for a simplified version of the discrete Laplace operator times thickness and thermal conductivity
+    \param[out] laplaceStencils a vector collecting Laplace bitpit stencil to be passed to Sysyem Solver assembly method.
+*/
+void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilScalar> & laplaceStencils) {
+
+    const std::unordered_map<long, long> &scaledDisciplineConsecutiveMapping = m_disciplineNumberingInfo.getCellConsecutiveMap();
+    std::vector<long> neighs;
+    std::vector<double> weights;
+    neighs.reserve(20);
+    weights.reserve(20);
+    for (const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+        if(cell.isInterior()) {
+            double weightsSum = 0.0;
+            neighs.clear();
+            weights.clear();
+
+            long cellId = cell.getId();
+            long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+            long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+            std::array<double,3> cellCentroid = m_scaledDisciplineMesh->evalCellCentroid(cellId);
+
+            StencilScalar & stencil = laplaceStencils[cellLocalConsecutiveId];
+            stencil.initialize(1,0.0);
+
+            neighs = m_scaledDisciplineMesh->findCellNeighs(cellId);
+            for(const long & neigh : neighs) {
+                std::array<double,3> neighCentroid = m_scaledDisciplineMesh->evalCellCentroid(neigh);
+                double weight = 1.0 / norm2(neighCentroid - cellCentroid);
+                weightsSum += weight;
+                weights.push_back(weight);
+            }
+            weights /= weightsSum;
+
+            stencil.reserve(neighs.size()+1);
+            for(size_t i = 0; i < neighs.size(); ++i) {
+                stencil.appendItem(neighs[i],weights[i]);
+            }
+            stencil.appendItem(cellId,-1.0);
+//            if(m_scaledDisciplineMesh->getRank() == 1) {
+//                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
+//                stencil.display(std::cout);
+//            }
+            stencil.renumber(scaledDisciplineConsecutiveMapping);
+//            if(m_scaledDisciplineMesh->getRank() == 1) {
+//                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
+//                stencil.display(std::cout);
+//            }
+            stencil = stencil * m_thickness * evalThermalDiffusivity();
+        }
+    }
+
+}
+
+/*!
+    Compute Helmholtz matrix from the Laplace one.
+    \param[out] helmholtzStencils a vector collecting Helmholtz bitpit stencil to be passed to Sysyem Solver assembly method.
+    \param[int] coefficient radiation flux coefficient
+*/
+void MeshCoupling::computeHelmholtzStencilsFromLaplaceStencils(std::vector<StencilScalar> & helmoltzStencils, const double & coefficient) {
+
+    for (const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+        if(cell.isInterior()) {
+            long cellId = cell.getId();
+            long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+            long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+            StencilScalar & stencil = helmoltzStencils[cellLocalConsecutiveId];
+            stencil.sumItem(cellConsecutiveId,coefficient);//global consecutive is mandatory because the stencil has been renumbered
+//            if(m_scaledDisciplineMesh->getRank() == 1) {
+//                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
+//                stencil.display(std::cout);
+//            }
+        }
+    }
+}
+
+/*!
+    Prepare linear system rhs by inserting external constant source flux contribution
+    \param[out] cellNormal the surface normal at cell location
+*/
+void MeshCoupling::prepareSystemRHS() {
+
+    long nLocalRow = m_system->getRowCount();
+    double *rhs = m_system->getRHSRawPtr();
+    if(m_innerSphere) {
+        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+            if(cell.isInterior()) {
+                long cellId = cell.getId();
+                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+                assert(cellLocalConsecutiveId < nLocalRow);
+
+                rhs[cellLocalConsecutiveId] = 0.0;
+            }
+        }
+    } else {
+        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+            if(cell.isInterior()) {
+                long cellId = cell.getId();
+                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+                assert(cellLocalConsecutiveId < nLocalRow);
+
+                std::array<double,3> cellNormal = m_scaledDisciplineMesh->evalFacetNormal(cellId);
+                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal);
+            }
+        }
+    }
+    m_system->restoreRHSRawPtr(rhs);
+}
+
+/*!
+    Evaluate diffusivity as function of radius
+*/
+double MeshCoupling::evalThermalDiffusivity() {
+    double thermalDiffusivity = 1.0;
+
+    return thermalDiffusivity;
+}
+
+/*!
+    Evaluate radiative external source intensity as function of the cell orientation
+    \param[out] cellNormal local cell normal to the surface
+*/
+double MeshCoupling::evalSourceIntensity(const std::array<double,3> & cellNormal) {
+
+    double intensity = 0.0;
+
+    double visibility = dotProduct(cellNormal,m_sourceDirection);
+    if(visibility >= 0.0) {
+        return 0.0;
+    }
+
+    intensity = fabs(visibility) * m_sourceMaxIntensity;
+
+    return intensity;
+}
+
+}
 

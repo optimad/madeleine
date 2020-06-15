@@ -8,6 +8,7 @@
 #include <exception>
 #if ENABLE_MPI==1
 #include "mpi.h"
+#include <petscksp.h>
 #endif
 
 using namespace bitpit;
@@ -138,6 +139,8 @@ int main( int argc, char *argv[] ) {
 
 #if ENABLE_MPI==1
     MPI_Init(&argc,&argv);
+    const char help[] = "None";
+    PetscInitialize(&argc, &argv, 0, help);
 
     {
 #endif

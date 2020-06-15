@@ -60,9 +60,9 @@ void test00001( int argc, char *argv[] ) {
     log::cout() << "|=====================================================|" << std::endl;
     log::cout() << std::endl;
 
-    std::vector<std::string> inputs(1,"Forces");
+    std::vector<std::string> inputs(1,"Flux"); //for inner sphere (outputs for outer one)
 
-    std::vector<std::string> outputs(1,"Pressure");
+    std::vector<std::string> outputs(1,"Temperature"); // for inner sphere (inputs for outer one)
 
     //Create the world group
     MPI_Group worldGroup;
@@ -99,9 +99,17 @@ void test00001( int argc, char *argv[] ) {
         MPI_Comm_rank(workersComm, &workRank);
         std::vector<int> cellIndicesPerRank = coupling::computeMeshFilePartitioning(neutralFilemesh,workersComm);
         //
-        coupling::MeshCoupling parallelToyDiscipline1(inputs,outputs,"toy1",workersComm);
+        coupling::MeshCoupling parallelToyDiscipline1(inputs,outputs,"InnerSphere",workersComm);
 
-        parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,2.0,1.0,false,1.0,{{1.0,0.0,0.0}},cellIndicesPerRank);
+        double radius = 2.0;
+        double thickness = 1.0;
+        bool isInnerSphere = true;
+        double sourceIntensity = 1.0;
+        std::array<double,3> sourceDirection = {{1.0,0.0,0.0}};
+
+        parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,
+                radius,thickness,isInnerSphere,sourceIntensity,sourceDirection
+                ,cellIndicesPerRank);
         //
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);

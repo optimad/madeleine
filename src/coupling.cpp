@@ -28,7 +28,7 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})
 #else
-MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
+MeshCoupling::MeshCoupling(std::string disciplineName) :
         m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})

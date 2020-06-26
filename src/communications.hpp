@@ -75,15 +75,42 @@ public:
     ListBufferStreamer(container_t *container);
     ListBufferStreamer(container_t *container, const size_t &itemSize);
 
+    //virtual ~ListBufferStreamer();
+
     container_t & getContainer();
 
-    void read(const int &rank, bitpit::RecvBuffer &buffer, const std::vector<long> &list = std::vector<long>());
-    void write(const int &rank, bitpit::SendBuffer &buffer, const std::vector<long> &list = std::vector<long>());
+    virtual void read(const int &rank, bitpit::RecvBuffer &buffer, const std::vector<long> &list = std::vector<long>());
+    virtual void write(const int &rank, bitpit::SendBuffer &buffer, const std::vector<long> &list = std::vector<long>());
 
 protected:
     container_t *m_container;
 
 };
+
+template<typename value_t>
+class ListBufferStreamer<bitpit::PiercedStorage<value_t,long>,value_t> : public ExchangeBufferStreamer
+{
+
+public:
+    typedef value_t value_type;
+
+    ListBufferStreamer(bitpit::PiercedStorage<value_t,long> *container);
+    ListBufferStreamer(bitpit::PiercedStorage<value_t,long> *container, const size_t &itemSize);
+
+    //virtual ~ListBufferStreamer();
+
+    bitpit::PiercedStorage<value_t,long> & getContainer();
+
+    virtual void read(const int &rank, bitpit::RecvBuffer &buffer, const std::vector<long> &list = std::vector<long>()) override;
+    virtual void write(const int &rank, bitpit::SendBuffer &buffer, const std::vector<long> &list = std::vector<long>()) override;
+
+protected:
+    bitpit::PiercedStorage<value_t,long> *m_container;
+
+};
+
+
+
 
 class ListCommunicator : public bitpit::DataCommunicator
 {

@@ -38,6 +38,7 @@
 #define __MADELEINE_COMMUNICATIONS_TPP__
 
 #include <bitpit_IO.hpp>
+#include <bitpit_containers.hpp>
 
 /*!
     \class ListBufferStreamer
@@ -121,6 +122,53 @@ template<typename container_t, typename value_t>
 container_t & ListBufferStreamer<container_t, value_t>::getContainer()
 {
     return *m_container;
+}
+
+
+
+template<typename value_t>
+ListBufferStreamer<bitpit::PiercedStorage<value_t, long>,value_t>::ListBufferStreamer(bitpit::PiercedStorage<value_t, long> *container)
+    : ExchangeBufferStreamer(sizeof(value_t)),
+      m_container(container)
+{
+}
+
+template<typename value_t>
+ListBufferStreamer<bitpit::PiercedStorage<value_t, long>,value_t>::ListBufferStreamer(bitpit::PiercedStorage<value_t, long> *container, const size_t &itemSize)
+    : ExchangeBufferStreamer(itemSize),
+      m_container(container)
+{
+}
+
+
+template<typename value_t>
+void ListBufferStreamer<bitpit::PiercedStorage<value_t, long>,value_t>::read(const int &rank,
+        bitpit::RecvBuffer &buffer, const std::vector<long> &list) {
+
+    BITPIT_UNUSED(rank);
+
+    value_t temp;
+    for (const long k : list) {
+        for(size_t i = 0; i < this->m_container->getFieldCount(); ++i) {
+            buffer >> temp;
+            this->m_container->set(k,i,temp);
+        }
+    }
+
+}
+
+template<typename value_t>
+void ListBufferStreamer<bitpit::PiercedStorage<value_t, long>,value_t>::write(const int &rank,
+        bitpit::SendBuffer &buffer, const std::vector<long> &list) {
+
+    BITPIT_UNUSED(rank);
+
+    for (const long k : list) {
+        for(size_t i = 0; i < this->m_container->getFieldCount(); ++i) {
+            buffer << this->m_container->at(k,i);
+        }
+    }
+
 }
 
 #endif

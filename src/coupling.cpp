@@ -25,6 +25,7 @@ namespace coupling{
 #if ENABLE_MPI==1
 MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
         m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)),
+        m_disciplineData(2), m_neutralData(2),
         fid_temperature(0), fid_flux(1),
         m_disciplineRadius(1.0), m_oldDisciplineRadius(1.0), m_neutralRadius(1.0), m_oldNeutralRadius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
@@ -32,6 +33,7 @@ MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
 #else
 MeshCoupling::MeshCoupling(std::string disciplineName) :
         m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)),
+        m_neutralData(2), m_disciplineData(2),
         m_disciplineRadius(1.0), m_oldDisciplineRadius(1.0), m_neutralRadius(1.0), m_oldNeutralRadius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})
@@ -212,17 +214,19 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
 
 void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
+
     log::cout() << "First Interpolation" << std::endl;
     //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning
     m_scaledNeutralMesh->sortCells();
 
-    //put data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
+    //put Input data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
     std::size_t counter = 0;
     assert(size == m_scaledNeutralMesh->getInternalCount());
     for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
         if(cell.isInterior()) {
-            m_neutralData.set(id,neutralInputArray[counter]);
+            //m_neutralData.set(id,neutralInputArray[counter]);
+            m_neutralData.set(id,m_inputField,neutralInputArray[counter]);
             //m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
             ++counter;
         }
@@ -235,7 +239,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
 
     //Interpolate from N_f to D_{N_f]
     std::cout << "N_f to D_{N_f} interpolation." << std::endl;
-    interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData);
+    interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData, m_inputField);
 
     //Update discipline ghost cell values
     std::cout << "Updatings discipline ghosts" << std::endl;
@@ -257,7 +261,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
 
     //Interpolate from N_f to D_{N_f]
     std::cout << "D_{N_f} to N_{D_{N_f}} interpolation." << std::endl;
-    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData);
+    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_outputField);
 
     dynamicPartitionNeutralMeshByNeutralMeshWithData();
 
@@ -290,7 +294,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
     for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
         if(cell.isInterior()) {
-            neutralInputArray[counter] = m_neutralData.at(id);
+            neutralInputArray[counter] = m_neutralData.at(id, m_outputField);
             ++counter;
         }
     }
@@ -616,6 +620,8 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank(SurfUnstructured *seria
     //Reduce disciplineMappedRankForNeutral on Rank 0 for static partitioning
     MPI_Allreduce(MPI_IN_PLACE,m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank.data(),nofCellsNeutral,MPI_INT,MPI_MAX,m_comm);
 
+    delete [] idxNeutral;
+    delete [] cellCentersNeutral;
 }
 
 /*!
@@ -892,7 +898,7 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscip
     //m_scaledNeutralMesh->squeeze();
 
     //Communicate exchanged cell values during partitioning
-    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
+    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double) * 2;
     for(auto info : partitionInfo) {
 
         int sendRank = info.rank;
@@ -957,7 +963,7 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshWithData() {
     std::vector<adaption::Info> partitionInfo = m_scaledNeutralMesh->partitioningPrepare(m_neutralMeshFilePartitionCellPerRank,true);
 
     //Communicate exchanged cell values during partitioning
-    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double);
+    size_t singleCellByteSize = sizeof(long) + m_neutralData.getFieldCount() * sizeof(double) * 2;
     for(auto info : partitionInfo) {
 
         int sendRank = info.rank;
@@ -1041,8 +1047,21 @@ void MeshCoupling::uniformlyInitAllData(double value) {
 */
 void MeshCoupling::prepareWritingData() {
 
-    m_neutralVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledNeutralMesh.get()),m_neutralData,m_inputDataNames));
-    m_disciplineVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledDisciplineMesh.get()),m_disciplineData,m_outputDataNames));
+    std::vector<std::string> fieldDataNames(m_inputDataNames);
+    for(std::string & name : fieldDataNames) {
+        name = name + "_input";
+    }
+    fieldDataNames.insert(fieldDataNames.end(),m_outputDataNames.begin(),m_outputDataNames.end());
+    for(size_t i = m_inputDataNames.size(); i < fieldDataNames.size(); ++i) {
+        fieldDataNames[i] = fieldDataNames[i] + "_output";
+    }
+//    for(std::string & name : fieldDataNames) {
+//        std::cout << name << " ";
+//    }
+//    std::cout << std::endl;
+
+    m_neutralVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledNeutralMesh.get()),m_neutralData,fieldDataNames));
+    m_disciplineVTKFieldStreamer = std::unique_ptr<coupling::FieldStreamer>(new coupling::FieldStreamer(*(m_scaledDisciplineMesh.get()),m_disciplineData,fieldDataNames));
     m_scaledNeutralMesh->getVTK().setName(m_name + "_neutralMesh");
     m_scaledNeutralMesh->getVTK().setCounter();
     m_scaledNeutralMesh->setVTKWriteTarget(bitpit::PatchKernel::WRITE_TARGET_CELLS_INTERNAL);
@@ -1086,8 +1105,8 @@ void MeshCoupling::createGhostCommunicators(bool continuous) {
 */
 void MeshCoupling::initializeGhostCommunicators() {
 
-    m_neutralGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>>(&m_neutralData));
-    m_disciplineGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>>(&m_disciplineData));
+    m_neutralGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>,double>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>,double>(&m_neutralData,2*sizeof(double)));
+    m_disciplineGhostStreamer = std::unique_ptr<ListBufferStreamer<bitpit::PiercedStorage<double, long>,double>>(new ListBufferStreamer<bitpit::PiercedStorage<double, long>,double>(&m_disciplineData,2*sizeof(double)));
 
     createGhostCommunicators(true);
 

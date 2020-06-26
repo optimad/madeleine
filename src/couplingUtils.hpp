@@ -18,7 +18,7 @@ using namespace bitpit;
 namespace coupling {
 //SurfUnstructured scale(const SurfUnstructured & unitRadiusSphereMesh, double radius);
 void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * fromData, SurfUnstructured * toMesh, PiercedVector<double> * toData);
-void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData);
+void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData, int fieldIndex = -1);
 void initDoubleDataOnMesh(SurfUnstructured * mesh, PiercedVector<double>* data);
 void initDataOnMeshFromArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize);
 void moveDataOnMeshToArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize);

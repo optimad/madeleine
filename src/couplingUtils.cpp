@@ -103,8 +103,9 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * from
     \param[in] toData the interpolated data on the destination mesh (PiercedStorage)
     \return the scaled mesh
 */
-void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData){
+void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData, int fieldIndex){
 
+    assert(fieldIndex < fromData->getFieldCount() && fieldIndex < toData->getFieldCount() && fieldIndex >= 0);
     log::cout() << "Interpolating... " << std::endl;
 
     SurfaceSkdTree fromTree(fromMesh);
@@ -135,17 +136,18 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
         cellCentersDist = norm2(neighCellCenter-toCellCenter);
         weight = 1.0 / (cellCentersDist*cellCentersDist);
         weightSum += weight;
-        interpVal += weight * fromData->at(fromCellId);
+        interpVal += weight * fromData->at(fromCellId, fieldIndex);
         for(const long & neigh : neighs) {
             neighCellCenter = fromMesh->evalCellCentroid(neigh);
             cellCentersDist = norm2(neighCellCenter-toCellCenter);
             weight = 1.0 / (cellCentersDist*cellCentersDist);
             weightSum += weight;
-            interpVal += weight * fromData->at(neigh);
+            interpVal += weight * fromData->at(neigh,fieldIndex);
         }
         interpVal /= weightSum;
 
-        toData->set(toCellId,interpVal);
+        //toData->set(toCellId,interpVal);
+        toData->set(toCellId, fieldIndex, interpVal);
     }
 
 };
@@ -342,11 +344,17 @@ void FieldStreamer::flushData(std::fstream &stream, const std::string & name, VT
     assert(format == VTKFormat::APPENDED);
     BITPIT_UNUSED(format);
 
+    int fieldIndex;
     for(const std::string & fieldName : m_fieldNames) {
         if(name == fieldName) {
+            if( name.find("temperature") != std::string::npos || name.find("Temperature") != std::string::npos ) {
+                fieldIndex = 0;
+            } else {
+                fieldIndex = 1;
+            }
             for (const Cell &cell : m_patch.getVTKCellWriteRange()) {
                 long id = cell.getId();
-                genericIO::flushBINARY(stream, m_scalarField.at(id));
+                genericIO::flushBINARY(stream, m_scalarField.at(id,fieldIndex));
             }
         }
     }

@@ -24,12 +24,15 @@ namespace coupling{
 */
 #if ENABLE_MPI==1
 MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
-        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0),
+        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)),
+        fid_temperature(0), fid_flux(1),
+        m_disciplineRadius(1.0), m_oldDisciplineRadius(1.0), m_neutralRadius(1.0), m_oldNeutralRadius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})
 #else
 MeshCoupling::MeshCoupling(std::string disciplineName) :
-        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)), m_radius(1.0),
+        m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)),
+        m_disciplineRadius(1.0), m_oldDisciplineRadius(1.0), m_neutralRadius(1.0), m_oldNeutralRadius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})
 #endif
@@ -72,6 +75,8 @@ MeshCoupling::MeshCoupling(std::string disciplineName) :
     m_nprocs = 1;
 #endif
     m_kernel = -1;
+    m_inputField = -1;
+    m_outputField = -1;
 };
 
 /*!
@@ -95,10 +100,10 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 
 
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-        double radius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
         const std::vector<int> & globalNeutralId2MeshFileRank){
     int kernel = 1;
-    initialize(unitDisciplineMeshFile, unitNeutralMeshFile, radius, thickness, innerSphere, sourceIntensity, sourceDirection,
+    initialize(unitDisciplineMeshFile, unitNeutralMeshFile, disciplineRadius, neutralRadius, thickness, innerSphere, sourceIntensity, sourceDirection,
             globalNeutralId2MeshFileRank, kernel);
 }
 
@@ -114,11 +119,12 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     \param[in] sourceDirection is an array for the direction of the external constant source flux
 */
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-        double radius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
         const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
-    m_radius = radius;
+    m_disciplineRadius = disciplineRadius;
+    m_neutralRadius = neutralRadius;
     m_thickness = thickness;
     m_innerSphere = innerSphere;
     m_sourceMaxIntensity = sourceIntensity;
@@ -170,6 +176,18 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     std::string name = "D_Nf";
     m_scaledDisciplineMesh->write(name);
 
+
+    //Prepare discipline
+    //set Input/Output field access indices to be interpolated from/to neutral
+    //If inner sphere then input is flux
+    //If outer spehere then input is temperature
+    if(m_innerSphere) {
+        m_inputField = fid_flux;
+        m_outputField = fid_temperature;
+    } else {
+        m_inputField = fid_temperature;
+        m_outputField = fid_flux;
+    }
     //Prepare Linear System
     //Matrix
     assemblySimplifiedDiscreteHelmholtzSystem();
@@ -220,6 +238,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
     interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData);
 
     //Update discipline ghost cell values
+    std::cout << "Updatings discipline ghosts" << std::endl;
     updateDisciplineGhosts();
 
     if (m_kernel == 1){
@@ -788,24 +807,28 @@ void MeshCoupling::staticPartitionDisciplineMeshByNeutralFile() {
 */
 void MeshCoupling::buildScaledMeshes() {
 
-    std::cout << "Radius: " << m_radius << std::endl;
+    std::cout << "Discipline Radius: " << m_disciplineRadius << std::endl;
+    std::cout << "Neutral Radius: " << m_neutralRadius << std::endl;
     //discipline
     m_scaledDisciplineMesh = PatchKernel::clone(m_unitDisciplineMesh.get());
-    //m_scaledDisciplineMesh->scale(m_radius);
-    PiercedVector<Vertex> & disciplineVertices = m_scaledDisciplineMesh->getVertices();
-    std::array<double,3> origin = {{0.0,0.0,0.0}};
-    std::array<double,3> scaling = {{m_radius,m_radius,m_radius}};
-    for(Vertex &v : disciplineVertices) {
-        v.scale(scaling,origin);
-    }
+//    std::array<double,3> origin = {{0.0,0.0,0.0}};
+//    std::array<double,3> scaling = {{m_radius,m_radius,m_radius}};
+//    m_scaledDisciplineMesh->scale(scaling);
+//    PiercedVector<Vertex> & disciplineVertices = m_scaledDisciplineMesh->getVertices();
+//    for(Vertex &v : disciplineVertices) {
+//        v.scale(scaling,origin);
+//    }
+    scaleMeshToRadius(m_scaledDisciplineMesh,m_oldDisciplineRadius,m_disciplineRadius);
     m_disciplineNumberingInfo = PatchNumberingInfo(m_scaledDisciplineMesh.get());
 
     //neutral
     m_scaledNeutralMesh = PatchKernel::clone(m_unitNeutralMesh.get());
-    PiercedVector<Vertex> & neutralVertices = m_scaledNeutralMesh->getVertices();
-    for(Vertex & v : neutralVertices) {
-        v.scale(scaling,origin);
-    }
+    //m_scaledNeutralMesh->scale(m_radius);
+//    PiercedVector<Vertex> & neutralVertices = m_scaledNeutralMesh->getVertices();
+//    for(Vertex & v : neutralVertices) {
+//        v.scale(scaling,origin);
+//    }
+    scaleMeshToRadius(m_scaledNeutralMesh, m_oldNeutralRadius, m_neutralRadius);
     m_neutralNumberingInfo = PatchNumberingInfo(m_scaledNeutralMesh.get());
 }
 
@@ -850,17 +873,17 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscip
 //        std::cout << std::flush;
 //    }
 //
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(m_rank == r) {
-            for(auto & elem : m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks) {
-                std::cout << "map rank " << m_rank << " " << elem.first << " " << elem.second << std::endl;
-            }
-        }
-        MPI_Barrier(m_comm);
-        std::cout << std::flush;
-    }
-    std::cout << std::flush;
-    MPI_Barrier(m_comm);
+//    for(int r = 0; r < m_nprocs; ++r) {
+//        if(m_rank == r) {
+//            for(auto & elem : m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks) {
+//                std::cout << "map rank " << m_rank << " " << elem.first << " " << elem.second << std::endl;
+//            }
+//        }
+//        MPI_Barrier(m_comm);
+//        std::cout << std::flush;
+//    }
+//    std::cout << std::flush;
+//    MPI_Barrier(m_comm);
 
     std::cout << "Partition prepare.." << std::endl;
     std::vector<adaption::Info> partitionInfo = m_scaledNeutralMesh->partitioningPrepare(m_neutralId2NeutralMeshFilePartitionedDisciplineCellPerRanks,true);
@@ -995,6 +1018,22 @@ void MeshCoupling::uniformlyInitAllData(double value) {
     m_neutralData.fill(value);
     m_disciplineData.fill(value);
 
+    //DEBUG
+    double neutralValues[2]; neutralValues[fid_temperature] = double(m_rank); neutralValues[fid_flux] = double(10 + m_rank);
+    double disciplineValues[2]; disciplineValues[fid_temperature] = double(m_rank + 20); disciplineValues[fid_flux] = double(m_rank + 30);
+
+    for(const auto & cell : m_scaledNeutralMesh->getCells()) {
+        long id = cell.getId();
+        m_neutralData.set(id,2,0,neutralValues);
+    }
+    for(const auto & cell : m_scaledDisciplineMesh->getCells()) {
+        long id = cell.getId();
+        //m_disciplineData.set(id,2,0,disciplineValues);
+        m_disciplineData.set(id,fid_temperature,double(m_rank+40));
+        m_disciplineData.set(id,fid_flux,double(m_rank+30));
+    }
+
+    //DEBUG
 }
 
 /*!
@@ -1325,6 +1364,22 @@ double MeshCoupling::evalSourceIntensity(const std::array<double,3> & cellNormal
     intensity = fabs(visibility) * m_sourceMaxIntensity;
 
     return intensity;
+}
+
+/*!
+    Scale mesh to current radius. It updates the bounding box
+*/
+void MeshCoupling::scaleMeshToRadius(std::unique_ptr<SurfUnstructured> & mesh, double & oldRadius, const double & newRadius) {
+
+    std::array<double,3> origin = {{0.0,0.0,0.0}};
+    double scaleFactor = newRadius / oldRadius;
+    std::array<double,3> scaling = {{scaleFactor, scaleFactor, scaleFactor}};
+    PiercedVector<Vertex> & vertices = mesh->getVertices();
+    for(Vertex & v : vertices) {
+        v.scale(scaling,origin);
+    }
+    mesh->updateBoundingBox(true);
+    oldRadius = newRadius;
 }
 
 }

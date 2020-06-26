@@ -104,20 +104,20 @@ void test00001( int argc, char *argv[] ) {
 
         double radius = 2.0;
         double thickness = 1.0;
-        bool isInnerSphere = true;
+        bool isInnerSphere = false;
         double sourceIntensity = 1.0;
         std::array<double,3> sourceDirection = {{1.0,0.0,0.0}};
 
         parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,
-                radius,thickness,isInnerSphere,sourceIntensity,sourceDirection
+                radius,radius,thickness,isInnerSphere,sourceIntensity,sourceDirection
                 ,cellIndicesPerRank);
         //
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);
-/*
+
         std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),workRank);
         parallelToyDiscipline1.compute(neutralData.data(),neutralData.size());
-*/
+
         //
         //    parallelToyDiscipline.close();
     }

@@ -42,10 +42,12 @@ public:
     MeshCoupling(const std::vector<std::string> & inputNames, std::vector<std::string> & outputNames, std::string disciplineName);
 #endif
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-            double sphereRadius, double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            double sphereRadius, double sphereNeutralRadius,
+            double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
             const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-            double sphereRadius, double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            double sphereDisciplineRadius, double sphereNeutralRadius,
+            double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
             const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size);
     const std::vector<std::string> & getInputDataNames();
@@ -90,7 +92,8 @@ private:
 
     std::unique_ptr<SurfUnstructured> m_unitDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_unitNeutralMesh;
-    double m_radius;
+    double m_disciplineRadius,m_neutralRadius;
+    double m_oldDisciplineRadius,m_oldNeutralRadius;
     std::unique_ptr<SurfUnstructured> m_scaledDisciplineMesh;
     std::unique_ptr<SurfUnstructured> m_scaledNeutralMesh;
     PatchNumberingInfo m_neutralNumberingInfo;
@@ -110,6 +113,9 @@ private:
     bool m_innerSphere;
     double m_sourceMaxIntensity;
     std::array<double,3> m_sourceDirection;
+
+    void scaleMeshToRadius(std::unique_ptr<SurfUnstructured> & mesh, double & oldRadius, const double & newRadius);
+
     double evalThermalDiffusivity();
     void assemblySimplifiedDiscreteHelmholtzSystem();
     void prepareSystemRHS();
@@ -153,6 +159,11 @@ private:
     std::unordered_map<long,int> m_neutralFile2DisciplineCellPerRanks;
 #endif
 
+    //field access indices
+    const int fid_temperature;
+    const int fid_flux;
+    int m_inputField;
+    int m_outputField;
 };
 
 }

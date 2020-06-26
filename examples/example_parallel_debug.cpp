@@ -29,7 +29,7 @@ void test00002( int argc, char *argv[] ) {
     mesh.setCommunicator(MPI_COMM_WORLD);
 
     std::stringstream meshDump;
-    std::string folder = "secondo";
+    std::string folder = "./";
     meshDump << folder << "/neutralMeshFilePartitioned_" << rank << ".dat";
     std::ifstream meshStream;
     meshStream.open(meshDump.str().c_str());
@@ -44,10 +44,12 @@ void test00002( int argc, char *argv[] ) {
     mapStream.open(mapFile.str().c_str());
     long key;
     int value;
-    while(mapStream.good()) {
-        mapStream >> key;
-        mapStream >> value;
-        map[key] = value;
+    if(mapStream.peek() != std::ifstream::traits_type::eof()) {
+        while(mapStream.good()) {
+            mapStream >> key;
+            mapStream >> value;
+            map[key] = value;
+        }
     }
 
     PiercedStorage<double,long> data;
@@ -65,8 +67,8 @@ void test00002( int argc, char *argv[] ) {
     std::vector<adaption::Info> partitionInfo = mesh.partition(map,true,true);
 //    mesh.squeeze();
 //    mesh.getCells().sync();
-//    std::string meshOut("meshafter");
-//    mesh.write(meshOut);
+    std::string meshOut("meshafter");
+    mesh.write(meshOut);
 }
 
 

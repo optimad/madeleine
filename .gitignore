@@ -24,3 +24,4 @@ python-wrapper/exportVariables
 *.log
 *.pyc
 *.dat
+.idea/

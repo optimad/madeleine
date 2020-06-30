@@ -49,7 +49,7 @@ public:
             double sphereDisciplineRadius, double sphereNeutralRadius,
             double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
             const std::vector<int> & globalNeutralId2MeshFileRank);
-    void compute(double *neutralInputArray, std::size_t size);
+    void compute(double *neutralInputArray, std::size_t size, double newRadius, double otherRadius);
     const std::vector<std::string> & getInputDataNames();
     const std::vector<std::string> & getOutputDataNames();
     const SurfUnstructured * getDisciplineMesh();

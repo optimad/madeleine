@@ -218,7 +218,13 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 */
 
 
-void MeshCoupling::compute(double *neutralInputArray, std::size_t size) {
+void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double newRadius, double otherRadius) {
+
+    //Set new radii and rescale meshes
+    BITPIT_UNUSED(otherRadius);
+    scaleMeshToRadius(m_scaledDisciplineMesh,m_disciplineRadius,newRadius);
+    scaleMeshToRadius(m_scaledNeutralMesh,m_disciplineRadius,newRadius);
+
 
     log::cout() << "First Interpolation" << std::endl;
     //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning

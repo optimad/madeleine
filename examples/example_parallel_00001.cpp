@@ -118,7 +118,7 @@ void test00001( int argc, char *argv[] ) {
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);
 
         std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),workRank);
-        parallelToyDiscipline1.compute(neutralData.data(),neutralData.size());
+        parallelToyDiscipline1.compute(neutralData.data(),neutralData.size(),radius,radius);
 
         //
         //    parallelToyDiscipline.close();

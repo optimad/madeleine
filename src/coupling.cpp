@@ -102,7 +102,7 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 
 
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
         const std::vector<int> & globalNeutralId2MeshFileRank){
     int kernel = 1;
     initialize(unitDisciplineMeshFile, unitNeutralMeshFile, disciplineRadius, neutralRadius, thickness, innerSphere, sourceIntensity, sourceDirection,
@@ -121,7 +121,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     \param[in] sourceDirection is an array for the direction of the external constant source flux
 */
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
-        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+        double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
         const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
@@ -130,7 +130,12 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_thickness = thickness;
     m_innerSphere = innerSphere;
     m_sourceMaxIntensity = sourceIntensity;
-    m_sourceDirection = sourceDirection/norm2(sourceDirection);
+
+    assert(sourceDirection.size() >= 3);
+    for(int i = 0; i < 3; ++i) {
+        m_sourceDirection[i] = sourceDirection[i];
+    }
+    m_sourceDirection /= norm2(sourceDirection);
 
     m_kernel = kernel;
 

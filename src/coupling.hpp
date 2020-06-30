@@ -43,11 +43,11 @@ public:
 #endif
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereRadius, double sphereNeutralRadius,
-            double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
             const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereDisciplineRadius, double sphereNeutralRadius,
-            double sphereThickness, bool innerSphere, double sourceIntensity, std::array<double,3> sourceDirection,
+            double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
             const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size);
     const std::vector<std::string> & getInputDataNames();

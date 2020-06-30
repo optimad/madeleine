@@ -106,7 +106,9 @@ void test00001( int argc, char *argv[] ) {
         double thickness = 1.0;
         bool isInnerSphere = false;
         double sourceIntensity = 1.0;
-        std::array<double,3> sourceDirection = {{1.0,0.0,0.0}};
+        //std::array<double,3> sourceDirection = {{1.0,0.0,0.0}};
+        std::vector<double> sourceDirection(3,0.0);
+        sourceDirection[0] = 1.0;
 
         parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,
                 radius,radius,thickness,isInnerSphere,sourceIntensity,sourceDirection

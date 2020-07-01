@@ -86,6 +86,7 @@ private:
     void updateNeutralGhosts();
     void updateDisciplineGhosts();
 
+    void disciplineKernel();
     void disciplineKernel1();
     void disciplineKernel2();
     const PatchNumberingInfo & getNeutraNumberingInfo();
@@ -109,6 +110,8 @@ private:
 
     int m_kernel;
     std::unique_ptr<StencilScalarSolver> m_system;
+    std::vector<StencilScalar> m_helmoltzStencils;
+
     double m_thickness;
     bool m_innerSphere;
     double m_sourceMaxIntensity;
@@ -118,10 +121,13 @@ private:
 
     double evalThermalDiffusivity();
     void assemblySimplifiedDiscreteHelmholtzSystem();
-    void prepareSystemRHS();
+    void updateSimplifiedDiscreteHelmholtzSystem();
+    void updateSystemRHS();
     void computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilScalar> & laplaceStencils);
     void computeHelmholtzStencilsFromLaplaceStencils(std::vector<StencilScalar> & helmoltzStencils, const double & coefficient);
     double evalSourceIntensity(const std::array<double,3> & cellNormal);
+    void solveSytem();
+    void updateOutputField();
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;

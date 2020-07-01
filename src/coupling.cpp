@@ -180,6 +180,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     //Initialize ghost communicators
     initializeGhostCommunicators();
 
+    updateDisciplineGhosts();
+
     std::string name = "D_Nf";
     m_scaledDisciplineMesh->write(name);
 
@@ -196,9 +198,10 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
         m_outputField = fid_flux;
     }
     //Prepare Linear System
-    //Matrix
+    //Matrix preallocation assembly
+    m_helmoltzStencils.resize(getDisciplineMesh()->getInternalCount());
     assemblySimplifiedDiscreteHelmholtzSystem();
-    prepareSystemRHS();
+    updateSystemRHS(); //qui non serve solo testing
 
 
 #else
@@ -255,18 +258,20 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     std::cout << "Updatings discipline ghosts" << std::endl;
     updateDisciplineGhosts();
 
-    if (m_kernel == 1){
-        disciplineKernel1();
-    	std::cout << "Running Kernel 1" << std::endl;
-	}
-    else{
-    	std::cout << "Running Kernel 2" << std::endl;
-	disciplineKernel2();
-    }
+//    if (m_kernel == 1){
+//        disciplineKernel1();
+//    	std::cout << "Running Kernel 1" << std::endl;
+//	}
+//    else{
+//    	std::cout << "Running Kernel 2" << std::endl;
+//    	disciplineKernel2();
+//    }
+    //Solve Radiation problem
+    std::cout << "Solve radiation problem" << std::endl;
+    disciplineKernel();
 
     std::string name = "Nf";
     m_scaledNeutralMesh->write(name);
-    //With Data partitioning, but not useful, just for testing
     dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
 
     //Interpolate from N_f to D_{N_f]
@@ -1161,6 +1166,19 @@ void MeshCoupling::updateDisciplineGhosts() {
 /*!
     Use inputs and radius to perform computation on discipline mesh
 */
+void MeshCoupling::disciplineKernel() {
+
+    //Update Matrix element values
+    updateSimplifiedDiscreteHelmholtzSystem();
+    //Update RHS
+    updateSystemRHS();
+
+    solveSytem();
+
+    updateOutputField();
+}
+
+
 void MeshCoupling::disciplineKernel1() {
     float res = 0;
     std::size_t counter = 0;
@@ -1244,17 +1262,37 @@ long MeshCoupling::getNeutralGlobalConsecutiveId(long id){
 */
 void MeshCoupling::assemblySimplifiedDiscreteHelmholtzSystem() {
 
-    std::vector<StencilScalar> helmoltzStencils(getDisciplineMesh()->getInternalCount());
-    computeSimplifiedDiscreteLaplaceStencils(helmoltzStencils);
+    //Compute Stencils
+    computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
     double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     if(!m_innerSphere) {
-        computeHelmholtzStencilsFromLaplaceStencils(helmoltzStencils, coefficient);
+        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, coefficient);
     }
+
+    //Assembly matrix and linear system
     KSPOptions &solverOptions = m_system->getKSPOptions();
     solverOptions.rtol    = 1e-7;//set PETSc KSP global tolerance
     solverOptions.subrtol = 1e-7;//set PETSc blocks tolerance
-    m_system->assembly(m_scaledDisciplineMesh->getCommunicator(),m_scaledDisciplineMesh->isPartitioned(),helmoltzStencils);
+    solverOptions.maxits  = 1; //DEBUG TODO
+    m_system->assembly(m_scaledDisciplineMesh->getCommunicator(),m_scaledDisciplineMesh->isPartitioned(),m_helmoltzStencils);
 
+}
+
+/*!
+    Update the linear system matrix for a simplified version of the discrete Helmoltz operator
+*/
+void MeshCoupling::updateSimplifiedDiscreteHelmholtzSystem() {
+
+    //Compute Stencils
+    computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
+    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
+    if(!m_innerSphere) {
+        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, coefficient);
+    }
+
+    //update matrix
+    //m_system->update(m_rowIds,m_helmoltzStencils);
+    m_system->update(m_helmoltzStencils);
 }
 
 /*!
@@ -1281,6 +1319,7 @@ void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilS
 
             StencilScalar & stencil = laplaceStencils[cellLocalConsecutiveId];
             stencil.initialize(1,0.0);
+            stencil.zero();
 
             neighs = m_scaledDisciplineMesh->findCellNeighs(cellId);
             for(const long & neigh : neighs) {
@@ -1293,15 +1332,16 @@ void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilS
 
             stencil.reserve(neighs.size()+1);
             for(size_t i = 0; i < neighs.size(); ++i) {
-                stencil.appendItem(neighs[i],weights[i]);
+                stencil.sumItem(neighs[i],weights[i]);
             }
-            stencil.appendItem(cellId,-1.0);
-//            if(m_scaledDisciplineMesh->getRank() == 1) {
+            stencil.reserve(1);
+            stencil.sumItem(cellId,-1.0);
+//            if(m_scaledDisciplineMesh->getRank() == 0) {
 //                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
 //                stencil.display(std::cout);
 //            }
             stencil.renumber(scaledDisciplineConsecutiveMapping);
-//            if(m_scaledDisciplineMesh->getRank() == 1) {
+//            if(m_scaledDisciplineMesh->getRank() == 0) {
 //                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
 //                stencil.display(std::cout);
 //            }
@@ -1334,11 +1374,12 @@ void MeshCoupling::computeHelmholtzStencilsFromLaplaceStencils(std::vector<Stenc
 }
 
 /*!
-    Prepare linear system rhs by inserting external constant source flux contribution
+    Update linear system rhs by inserting external constant source flux contribution
     \param[out] cellNormal the surface normal at cell location
 */
-void MeshCoupling::prepareSystemRHS() {
+void MeshCoupling::updateSystemRHS() {
 
+    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     long nLocalRow = m_system->getRowCount();
     double *rhs = m_system->getRHSRawPtr();
     if(m_innerSphere) {
@@ -1350,6 +1391,7 @@ void MeshCoupling::prepareSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 rhs[cellLocalConsecutiveId] = 0.0;
+                rhs[cellLocalConsecutiveId] = - m_disciplineData.at(cellId,m_inputField);
             }
         }
     } else {
@@ -1361,7 +1403,7 @@ void MeshCoupling::prepareSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 std::array<double,3> cellNormal = m_scaledDisciplineMesh->evalFacetNormal(cellId);
-                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal);
+                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal) + coefficient * m_disciplineData.at(cellId,m_inputField);
             }
         }
     }
@@ -1393,6 +1435,51 @@ double MeshCoupling::evalSourceIntensity(const std::array<double,3> & cellNormal
     intensity = fabs(visibility) * m_sourceMaxIntensity;
 
     return intensity;
+}
+
+/*!
+    Solve linear system
+*/
+void MeshCoupling::solveSytem() {
+
+    m_system->solve();
+
+}
+
+/*!
+    Update output field in discipline pierced storage with linear system solution
+*/
+void MeshCoupling::updateOutputField() {
+
+    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
+    long nLocalRow = m_system->getRowCount();
+    const double *solution = m_system->getSolutionRawReadPtr();
+    if(m_innerSphere) {
+        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+            if(cell.isInterior()) {
+                long cellId = cell.getId();
+                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+                assert(cellLocalConsecutiveId < nLocalRow);
+
+                m_disciplineData.set(cellId,m_outputField,solution[cellLocalConsecutiveId]);
+            }
+        }
+    } else {
+        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+            if(cell.isInterior()) {
+                long cellId = cell.getId();
+                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+                assert(cellLocalConsecutiveId < nLocalRow);
+
+                double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * coefficient;
+                m_disciplineData.set(cellId,m_outputField,outputValue);
+            }
+        }
+    }
+    m_system->restoreSolutionRawReadPtr(solution);
+
 }
 
 /*!

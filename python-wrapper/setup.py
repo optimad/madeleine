@@ -4,7 +4,7 @@ from Cython.Distutils import Extension
 # Change this commented line with the following one gives us the possibility
 # to pass \"cython_compile_time_env\" at \"Extension\" because in line 154 we do
 # not have more to call \"cythonize\" function before returning \"ext_modules\".
-#from distutils.command.build_ext import build_ext as _build_ext
+# from distutils.command.build_ext import build_ext as _build_ext
 from Cython.Distutils import build_ext as _build_ext
 from distutils.core import setup
 
@@ -182,6 +182,8 @@ class build_ext(_build_ext):
         BITPIT_ENABLE_MPI = 0
         ENABLE_MPI = 1
         include_paths = [self.bitpit_path + "/include/bitpit/", self.madeleine_path + "../../src/"]
+        petsc_include_path = re.sub("/lib/","/include/",self.petsc_path)
+        include_paths.append(petsc_include_path)
 
         mpi_lib = ""
         if ((not (not self.mpi_include_path)) and (ENABLE_MPI4PY)):

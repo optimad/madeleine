@@ -276,7 +276,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     m_scaledNeutralMesh->write(name);
     dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
 
-    //Interpolate from N_f to D_{N_f]
+    //Interpolate from D_{N_f} to N_{D_{N_f}}
     std::cout << "D_{N_f} to N_{D_{N_f}} interpolation." << std::endl;
     interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_outputField);
 
@@ -1213,17 +1213,19 @@ void MeshCoupling::disciplineKernel2() {
 }
 
 /*!
-    Compute row elements of the Jacobian Matrix to be passed to PETSc
-    \param[in] cellId the local cell id
+    Compute row elements of the Jacobian Matrix to be passed to PETSc4Py
+    \param[in] index it is the cell order number from GEMS. ATTENTION: IT IS MANDATORY THAT PARTITIONED MESHES ARE SQUEEZED!!!!
     \param[out] cellGlobalId a global consecutive id to be used in PETSc
     \param[out] columnIds a vector long containing the indices of non-zero elements in the matrix row relative to cellGlobalId
     \param[out] columnValues a vector double containing the values of non-zero elements in the matrix row relative to cellGlobalId
 */
-void MeshCoupling::computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues) {
+void MeshCoupling::computeJacobianRow(long index, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues) {
 
 
     columnIds.clear();
     columnValues.clear();
+    //Access cell id from raw iterator of PiercedVector using ordered local index from Python
+    long cellId = m_scaledNeutralMesh->getCells().rawFind(index).getId();
     cellGlobalId = getNeutralGlobalConsecutiveId(cellId);
 
     //Fake Jacobian line to be modified - at the moment matrix row element values correspond to cell global indices

@@ -114,8 +114,7 @@ class ToySphereDiscipline(MDODiscipline):
         mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm)
         mat.setUp()
 
-        beginId = self.mesh_coupling.getNeutralFirstCellId()
-        for i in range(beginId,beginId+nofNeutralLocalCells):
+        for i in range(nofNeutralLocalCells):
             rowId,colIds,values = self.mesh_coupling.computeJacobianRow(i)
             rowIds = [rowId]
             #CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible

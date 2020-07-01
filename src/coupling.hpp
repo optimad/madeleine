@@ -58,7 +58,7 @@ public:
     long getNeutralFirstCellId();
     long getNeutralGlobalConsecutiveId(long id);
     void close();
-    void computeJacobianRow(long cellId, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
+    void computeJacobianRow(long index, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
 
 private:
     void readUnitDisciplineMesh();

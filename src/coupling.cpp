@@ -1002,7 +1002,7 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshWithData() {
     m_lbCommunicator->startAllRecvs();
     m_lbCommunicator->startAllSends();
 
-    partitionInfo = m_scaledNeutralMesh->partitioningAlter(true,false);
+    partitionInfo = m_scaledNeutralMesh->partitioningAlter(true,true);
     m_scaledNeutralMesh->partitioningCleanup();
 
     long recvId;

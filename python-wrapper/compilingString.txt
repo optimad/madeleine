@@ -1,0 +1,9 @@
+OLD COMPILE STRING - NO CONDA
+python setup.py build_ext --inplace --bitpit-path=/home/marco/installbitpitdebug_petsc --madeleine-path=/home/marco/git/madeleine/buildparallel/src/ --metis-path=/usr/metis-5.1.0/lib/ --petsc-path=/opt/petsc/petsc-3.7.5/lib/ --lapack-path=/usr/lib/ --extensions-source=coupling.pyx
+
+NEW COMPILE STRING - CONDA
+python setup.py build_ext --inplace --bitpit-path=/home/marco/installbitpitdebug_conda --madeleine-path=/home/marco/git/madeleine/debug-conda/src/ --metis-path=/usr/metis-5.1.0/lib/ --petsc-path=/home/marco/software/miniconda2/envs/madeleineCython/lib/ --lapack-path=/home/marco/software/miniconda2/envs/madeleineCython/lib/ --mpi-include-path=/home/marco/software/miniconda2/envs/madeleineCython/include/ --extensions-source=coupling.pyx
+
+See README.md for environment details.
+If exportVariable has been sourced:
+python setup.py build_ext --inplace --bitpit-path=$BITPIT_PATH --madeleine-path=$MADELEINE_PATH/ --metis-path=/usr/metis-5.1.0/lib/ --petsc-path=$CONDA_ENV_PATH/lib/ --lapack-path=$CONDA_ENV_PATH/lib/ --mpi-include-path=$CONDA_ENV_PATH/include/ --extensions-source=coupling.pyx

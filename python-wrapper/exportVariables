@@ -1,0 +1,16 @@
+#!/bin/bash
+export CONDA_ENV_PATH=/home/marco/software/miniconda2/envs/madeleineCython
+export CONDA_PATH=/home/marco/software/miniconda2
+export BITPIT_PATH=/home/marco/installbitpitdebug_conda
+export MADELEINE_WRAPPER_PATH=/home/marco/git/madeleine/python-wrapper
+export MADELEINE_PATH=/home/marco/git/madeleine/debug-conda/src
+export GEMS_PATH=/home/marco/git/gems
+
+export PATH=$CONDA_ENV_PATH/bin:$CONDA_PATH/condabin:$PATH
+export LD_LIBRARY_PATH=$CONDA_ENV_PATH/lib:$BITPIT_PATH/lib:$MADELEINE_PATH:$LD_LIBRARY_PATH
+export PYTHONPATH=$GEMS_PATH:$MADELEINE_WRAPPER_PATH:$PYTHONPATH
+
+#export PATH=/home/marco/software/miniconda2/envs/madeleineCython/bin:/home/marco/software/miniconda2/condabin:$PATH
+#export LD_LIBRARY_PATH=/home/marco/installbitpitdebug_conda/lib:/home/marco/git/madeleine/debug-conda/src:$LD_LIBRARY_PATH
+#export PYTHONPATH=/home/marco/git/gems/:/home/marco/git/madeleine/python-wrapper:$PYTHONPATH
+

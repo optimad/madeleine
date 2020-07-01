@@ -217,7 +217,9 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 /*!
     Interpolate from neutral(Nf) to discipline(D_Nf), compute smoothed step function on discipline(D_Nf), partition neutral mesh(N_{D_Nf}), interpolate from discipline(D_Nf) to neutral(N_{D_Nf})
 
-    \param[in] neutralInputArray contiguous C-array from NUMPY array ordered like id-ordered cells in Nf mesh file partitioning
+    \param[in/out] neutralInputArray contiguous C-array from NUMPY array ordered like id-ordered cells in Nf mesh file partitioning
+    \param[in] newRadius the radius of the discipline sphere coming from GEMS computations
+    \param[in] ohertRadius the radius of the other discipline sphere coming form GEMS computations (currently not used)
 */
 
 
@@ -304,7 +306,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
         std::cout << std::flush;
     }
 
-
+    //Update C-array to pass data to NUMPY array used by GEMS
     counter = 0;
     for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
@@ -1173,6 +1175,7 @@ void MeshCoupling::disciplineKernel() {
     //Update RHS
     updateSystemRHS();
 
+    std::cout << "Solving ..." << std::endl;
     solveSytem();
 
     updateOutputField();

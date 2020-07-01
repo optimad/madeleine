@@ -14,8 +14,8 @@ cdef extern from "coupling.hpp" namespace "coupling":
     cdef cppclass MeshCoupling:
         MeshCoupling(string, MPI_Comm) except +
         MeshCoupling(vector[string], vector[string], string, MPI_Comm) except +
-        void initialize(string, string, double, vector[int], int) except +
-        void compute(double * arr, size_t arrSize)
+        void initialize(string, string, double, double, double, bool, double, vector[double], vector[int], int) except +
+        void compute(double * arr, size_t arrSize, double, double)
         void close()
         const SurfUnstructured * getNeutralMesh()
         size_t getNeutralMeshSize()
@@ -52,18 +52,28 @@ cdef class Py_MeshCoupling:
     def __dealloc__(self):
         del self.thisptr
 
-    def initialize(self, unitDisciplineMeshFile, unitNeutralMeshFile, sphereRadius, cellIndicesPerRank, kernel):
+    def initialize(self, unitDisciplineMeshFile, unitNeutralMeshFile, sphereRadius, sphereNeutralRadius,
+    sphereThickness, innerSphere, sourceIntensity, sourceDirection, cellIndicesPerRank, kernel):
+#        cdef vector[double] sDirection
+#        sDirection.push_back(sourceDirection[0])
+#        sDirection.push_back(sourceDirection[1])
+#        sDirection.push_back(sourceDirection[2])
         self.thisptr.initialize( < string&> unitDisciplineMeshFile,
                                 < string & > unitNeutralMeshFile,
                                 < double > sphereRadius,
+                                < double > sphereNeutralRadius,
+                                < double > sphereThickness,
+                                < bool > innerSphere,
+                                < double > sourceIntensity,
+                                < const vector[double] & > sourceDirection,
                                 < const vector[int] & > cellIndicesPerRank,
                                 < int > kernel)
 
-    def compute(self, neutralData):
+    def compute(self, neutralData,double newRadius,double otherRadius):
         if not neutralData.flags['C_CONTIGUOUS']:
             neutralData = np.ascontiguousarray(neutralData)
         cdef double[::1] arr_memview = neutralData
-        self.thisptr.compute(& arr_memview[0], neutralData.shape[0])
+        self.thisptr.compute(& arr_memview[0], neutralData.shape[0], newRadius, otherRadius)
 
     def close(self):
         self.thisptr.close()

@@ -61,9 +61,10 @@ void test00001( int argc, char *argv[] ) {
     log::cout() << "|=====================================================|" << std::endl;
     log::cout() << std::endl;
 
-    std::vector<std::string> inputs(1,"Flux"); //for inner sphere (outputs for outer one)
-
-    std::vector<std::string> outputs(1,"Temperature"); // for inner sphere (inputs for outer one)
+//    std::vector<std::string> inputs(1,"Flux"); //for inner sphere (outputs for outer one)
+//    std::vector<std::string> outputs(1,"Temperature"); // for inner sphere (inputs for outer one)
+    std::vector<std::string> inputs(1,"Temperature"); //for outer sphere (outputs for outer one)
+    std::vector<std::string> outputs(1,"Flulx"); // for outer sphere (inputs for outer one)
 
     //Create the world group
     MPI_Group worldGroup;

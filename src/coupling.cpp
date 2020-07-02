@@ -1330,7 +1330,7 @@ void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilS
             for(size_t i = 0; i < neighs.size(); ++i) {
                 stencil.sumItem(neighs[i],weights[i]);
             }
-            stencil.reserve(1);
+            //stencil.reserve(1);
             stencil.sumItem(cellId,-1.0);
 //            if(m_scaledDisciplineMesh->getRank() == 0) {
 //                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
@@ -1439,6 +1439,7 @@ double MeshCoupling::evalSourceIntensity(const std::array<double,3> & cellNormal
 void MeshCoupling::solveSytem() {
 
     m_system->solve();
+    std::cout << "Iterations = " << m_system->getKSPStatus().its << std::endl;
 
 }
 

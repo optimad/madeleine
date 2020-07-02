@@ -128,6 +128,7 @@ private:
     double evalSourceIntensity(const std::array<double,3> & cellNormal);
     void solveSytem();
     void updateOutputField();
+    void updateInputField(double *neutralInputArray, std::size_t size);
 
     std::string m_disciplineMeshFileName;
     std::string m_neutralMeshFileName;

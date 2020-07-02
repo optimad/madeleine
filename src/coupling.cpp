@@ -234,18 +234,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning
     m_scaledNeutralMesh->sortCells();
 
-    //put Input data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
-    std::size_t counter = 0;
-    assert(size == m_scaledNeutralMesh->getInternalCount());
-    for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
-        long id = cell.getId();
-        if(cell.isInterior()) {
-            //m_neutralData.set(id,neutralInputArray[counter]);
-            m_neutralData.set(id,m_inputField,neutralInputArray[counter]);
-            //m_neutralData.set(id,m_scaledNeutralMesh->evalCellCentroid(id)[0]);//DEBUG
-            ++counter;
-        }
-    }
+    updateInputField(neutralInputArray,size);
 
     //Update neutral ghost cell values
     //It should not be the case but call m_neutralGhostCommunicator->resetExchangeLists() if neutral mesh has changed.
@@ -307,7 +296,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     }
 
     //Update C-array to pass data to NUMPY array used by GEMS
-    counter = 0;
+    std::size_t counter = 0;
     for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
         if(cell.isInterior()) {
@@ -1484,6 +1473,24 @@ void MeshCoupling::updateOutputField() {
         }
     }
     m_system->restoreSolutionRawReadPtr(solution);
+
+}
+
+/*!
+    Update input field neutral pierced storage with data from the other discipline
+*/
+void MeshCoupling::updateInputField(double *neutralInputArray, std::size_t size) {
+
+    //put Input data into neutral PiercedStorage - neutralInputArray should have the same number of elements of neutral mesh rank sub-domain(internals)
+    std::size_t counter = 0;
+    assert(size == m_scaledNeutralMesh->getInternalCount());
+    for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
+        long id = cell.getId();
+        if(cell.isInterior()) {
+            m_neutralData.set(id,m_inputField,neutralInputArray[counter]);
+            ++counter;
+        }
+    }
 
 }
 

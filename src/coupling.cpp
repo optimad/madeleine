@@ -1472,6 +1472,7 @@ void MeshCoupling::updateOutputField() {
 
                 double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * coefficient;
                 m_disciplineData.set(cellId,m_outputField,outputValue);
+                m_disciplineData.set(cellId,m_inputField,solution[cellLocalConsecutiveId]);
             }
         }
     }

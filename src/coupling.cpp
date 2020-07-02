@@ -1269,7 +1269,7 @@ void MeshCoupling::assemblySimplifiedDiscreteHelmholtzSystem() {
     KSPOptions &solverOptions = m_system->getKSPOptions();
     solverOptions.rtol    = 1e-7;//set PETSc KSP global tolerance
     solverOptions.subrtol = 1e-7;//set PETSc blocks tolerance
-    solverOptions.maxits  = 1; //DEBUG TODO
+    solverOptions.maxits  = 1000; //DEBUG TODO
     m_system->assembly(m_scaledDisciplineMesh->getCommunicator(),m_scaledDisciplineMesh->isPartitioned(),m_helmoltzStencils);
 
 }

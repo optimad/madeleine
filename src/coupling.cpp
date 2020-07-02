@@ -261,6 +261,8 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     std::cout << "Solve radiation problem" << std::endl;
     disciplineKernel();
 
+    updateDisciplineGhosts();
+
     std::string name = "Nf";
     m_scaledNeutralMesh->write(name);
     dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();

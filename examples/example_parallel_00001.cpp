@@ -22,6 +22,7 @@ void test00001( int argc, char *argv[] ) {
     //
 
     // Initialize input files (default/passed by arguments)
+    std::string disciplineFilemesh = "./data/unitSphere5.stl"; //NEUTRAL MESH SHOULD BE THE SAME MESH OF THE INNER DISCIPLINE TO AVOID RAY-TRACING FOR FLUX EXCHANGE
     std::string disciplineFilemesh = "./data/unitSphere5.stl";
     std::string neutralFilemesh = "./data/unitSphere4.stl";
     if (argc > 2) {

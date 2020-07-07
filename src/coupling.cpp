@@ -1033,8 +1033,11 @@ void MeshCoupling::uniformlyInitAllData(double value) {
     m_disciplineData.fill(value);
 
     //DEBUG
-    double neutralValues[2]; neutralValues[fid_temperature] = double(m_rank); neutralValues[fid_flux] = double(10 + m_rank);
-    double disciplineValues[2]; disciplineValues[fid_temperature] = double(m_rank + 20); disciplineValues[fid_flux] = double(m_rank + 30);
+    double neutralValues[2];
+//    neutralValues[fid_temperature] = double(m_rank); neutralValues[fid_flux] = double(10 + m_rank);
+    neutralValues[fid_temperature] = 274.0; neutralValues[fid_flux] = 0.0;
+    double disciplineValues[2];
+    disciplineValues[fid_temperature] = 274.0; disciplineValues[fid_flux] = 0.0;
 
     for(const auto & cell : m_scaledNeutralMesh->getCells()) {
         long id = cell.getId();
@@ -1042,9 +1045,9 @@ void MeshCoupling::uniformlyInitAllData(double value) {
     }
     for(const auto & cell : m_scaledDisciplineMesh->getCells()) {
         long id = cell.getId();
-        //m_disciplineData.set(id,2,0,disciplineValues);
-        m_disciplineData.set(id,fid_temperature,double(m_rank+40));
-        m_disciplineData.set(id,fid_flux,double(m_rank+30));
+        m_disciplineData.set(id,2,0,disciplineValues);
+//        m_disciplineData.set(id,fid_temperature,double(m_rank+40));
+//        m_disciplineData.set(id,fid_flux,double(m_rank+30));
     }
 
     //DEBUG

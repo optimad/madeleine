@@ -118,7 +118,11 @@ void test00001( int argc, char *argv[] ) {
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);
 
-        std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),workRank);
+        //Homogeneous initialization of inputs from neutral mesh
+        double initialTemperature = 274.0;
+        double initialFlux = 0.274;
+
+        std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),initialTemperature); //Flux for inner, Temperature for outer DEBUG=rank
         parallelToyDiscipline1.compute(neutralData.data(),neutralData.size(),radius,radius);
 
         //

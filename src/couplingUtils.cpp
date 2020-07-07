@@ -130,7 +130,8 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
         fromMesh->findCellNeighs(fromCellId,&neighs);
 
         //Interpolation
-        weightSum = 0;
+        weightSum = 0.0;
+        interpVal = 0.0;
         //fromCell contribution
         neighCellCenter = fromMesh->evalCellCentroid(fromCellId);
         cellCentersDist = norm2(neighCellCenter-toCellCenter);

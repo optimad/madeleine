@@ -236,6 +236,10 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     updateInputField(neutralInputArray,size);
 
+    std::string name = "initilizedNF";
+    m_scaledNeutralMesh->write(name);
+
+
     //Update neutral ghost cell values
     //It should not be the case but call m_neutralGhostCommunicator->resetExchangeLists() if neutral mesh has changed.
 
@@ -244,6 +248,10 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     //Interpolate from N_f to D_{N_f]
     std::cout << "N_f to D_{N_f} interpolation." << std::endl;
     interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData, m_inputField);
+
+    name = "intepolatedD_Nf";
+    m_scaledDisciplineMesh->write(name);
+
 
     //Update discipline ghost cell values
     std::cout << "Updatings discipline ghosts" << std::endl;
@@ -263,13 +271,22 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     updateDisciplineGhosts();
 
-    std::string name = "Nf";
-    m_scaledNeutralMesh->write(name);
+    name = "solutionD_Nf";
+    m_scaledDisciplineMesh->write(name);
+
+
+//    name = "Nf";
+//    m_scaledNeutralMesh->write(name);
     dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
 
     //Interpolate from D_{N_f} to N_{D_{N_f}}
     std::cout << "D_{N_f} to N_{D_{N_f}} interpolation." << std::endl;
     interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_outputField);
+    //This interpolation is for data check only. Input data will be overwritten at the beginning of the next compute call
+    interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_inputField);
+
+    name = "interpolatedSolutionN_{D_Nf}";
+    m_scaledNeutralMesh->write(name);
 
     dynamicPartitionNeutralMeshByNeutralMeshWithData();
 
@@ -955,10 +972,6 @@ void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscip
     Dynamically partition neutral mesh by discipline partitioning
 */
 void MeshCoupling::dynamicPartitionNeutralMeshByNeutralMeshWithData() {
-
-    std::string name = "N_{D_Nf}";
-    m_scaledNeutralMesh->write(name);
-
 
     //TODO continue from here
     for(Cell & cell : m_scaledNeutralMesh->getCells()) {

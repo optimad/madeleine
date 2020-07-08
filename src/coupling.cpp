@@ -307,6 +307,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
         }
     }
 
+    //Neutral mesh numbering info is needed in computeJacobianRow. No need to update it after any partitioning. But DO NOT use it if old.
     m_neutralNumberingInfo.update();
 
 };
@@ -1390,7 +1391,7 @@ void MeshCoupling::updateSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 rhs[cellLocalConsecutiveId] = 0.0;
-                rhs[cellLocalConsecutiveId] = - m_disciplineData.at(cellId,m_inputField);
+                rhs[cellLocalConsecutiveId] = m_disciplineData.at(cellId,m_inputField); //here -J~_io = J~_oi; outer discipline passes J~_oi = epsilon*(T_o-T~_i)
             }
         }
     } else {

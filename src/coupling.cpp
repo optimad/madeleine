@@ -1427,7 +1427,8 @@ void MeshCoupling::updateSystemRHS() {
     Evaluate diffusivity as function of radius
 */
 double MeshCoupling::evalThermalDiffusivity() {
-    double thermalDiffusivity = 1.0;
+
+    double thermalDiffusivity = 1.0;//coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
 
     return thermalDiffusivity;
 }

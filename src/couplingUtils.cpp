@@ -127,6 +127,7 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
         assert(fromMesh->getCell(fromCellId).isInterior());
 
         //Find neighbours of fromCell for interpolation
+        neighs.clear();
         fromMesh->findCellNeighs(fromCellId,&neighs);
 
         //Interpolation

@@ -121,8 +121,8 @@ class ToySphereDiscipline(MDODiscipline):
 
         # Initialize Jacobian matrices
         self._init_jacobian(with_zeros=True)
-        self.jac['Pressure'] = {}
-        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm)
+        self.jac[outputs[0]] = {}
+        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm) #Non-preallocated, malloc at each setVelue
         mat.setUp()
 
         for i in range(nofNeutralLocalCells):
@@ -133,9 +133,9 @@ class ToySphereDiscipline(MDODiscipline):
 
         mat.assemblyBegin()
         mat.assemblyEnd()
-        self.jac['Pressure']['Forces'] = mat
-        viewer = PETSc.Viewer().createASCII("ForcesJac.dat",mode=1,comm=comm)
-        viewer.view(self.jac['Pressure']['Forces'])
+        self.jac[outpus[0]][inputs[0]] = mat
+        viewer = PETSc.Viewer().createASCII("Jac.dat",mode=1,comm=comm)
+        viewer.view(self.jac[outpus[0]][inputs[0]])
 
         mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,1,comm=comm)
         mat.setUp()
@@ -143,7 +143,7 @@ class ToySphereDiscipline(MDODiscipline):
             mat.setValue(self.mesh_coupling.getNeutralGlobalConsecutiveId(i),0,i, addv=1)
         mat.assemblyBegin()
         mat.assemblyEnd()
-        self.jac['Pressure']['r'] = mat
+        self.jac[outputs[0]]['r'] = mat
 
         viewer = PETSc.Viewer().createASCII("RadiusJac.dat",mode=1,comm=comm)
-        viewer.view(self.jac['Pressure']['r'])
+        viewer.view(self.jac[outputs[0]]['r'])

@@ -8,7 +8,7 @@
 #        :author:  Francois Gallard
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 from numpy import ones
-
+import numpy as np
 from petsc4py import PETSc
 
 from gems.core.discipline import MDODiscipline
@@ -20,8 +20,14 @@ import coupling
 class ToySphereDiscipline(MDODiscipline):
 
     def __init__(self, name, inputs, outputs, mesh_file,
-                 neutral_mesh_file, sphere_radius=1.0, n_cpus=1, kernel=1):
+                 neutral_mesh_file, sphere_radius=1.0, sphere_neutral_radius=1.0,
+                 sphere_thickness=0.001, is_inner_sphere=True,
+                 source_intensity=1.0, source_direction=None,
+                 n_cpus=1, kernel=1):
 
+        if source_direction is None:
+            source_direction = [1.0, 0.0, 0.0]
+        np_source_direction = np.asarray(source_direction)
         self.inputs = inputs
         self.outputs = outputs
         self.mesh_file = mesh_file
@@ -81,6 +87,11 @@ class ToySphereDiscipline(MDODiscipline):
             self.mesh_coupling.initialize(mesh_file,
                                           neutral_mesh_file,
                                           sphere_radius,
+                                          sphere_neutral_radius,
+                                          sphere_thickness,
+                                          is_inner_sphere,
+                                          source_intensity,
+                                          source_direction,
                                           cell_indices_per_rank,
                                           self.kernel)
 
@@ -92,7 +103,7 @@ class ToySphereDiscipline(MDODiscipline):
         r = comm.bcast(r, root=0)
 
         # self.mesh_coupling.set_radius(r)
-        self.mesh_coupling.compute(input_vector)
+        self.mesh_coupling.compute(input_vector, r, r)
         output = {self.outputs[0]: input_vector}
         self.store_local_data(**output)
 

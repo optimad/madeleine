@@ -108,28 +108,90 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
     assert(fieldIndex < fromData->getFieldCount() && fieldIndex < toData->getFieldCount() && fieldIndex >= 0);
     log::cout() << "Interpolating... " << std::endl;
 
-    SurfaceSkdTree fromTree(fromMesh);
+    SurfaceSkdTree fromTree(fromMesh, false);//costruisce i ghost
     fromTree.build(1);
 
-    darray3 toCellCenter, neighCellCenter;
-    long toCellId, fromCellId;
-    double dist, weightSum, interpVal,cellCentersDist,weight;
-    std::vector<long> neighs;
+    //Collect cell center into array to be passed to parallel find PointClosest cell
+    darray3 *toCellCenters = new darray3[toMesh->getInternalCount()];
+    long *toCellIds = new long[toMesh->getInternalCount()];
+    long toCellId = 0, cellCounter = 0;
     PiercedVector<Cell>::iterator beginInternalCells = toMesh->internalBegin();
     PiercedVector<Cell>::iterator endInternalCells = toMesh->internalEnd();
     for(PiercedVector<Cell>::iterator itCell = beginInternalCells; itCell != endInternalCells; ++itCell) {
         toCellId = itCell->getId();
-        toCellCenter = toMesh->evalCellCentroid(toCellId);
+        toCellCenters[cellCounter] = toMesh->evalCellCentroid(toCellId);
+        toCellIds[cellCounter] = toCellId;
+        ++cellCounter;
+    }
 
-        fromTree.findPointClosestCell(toCellCenter,&fromCellId,&dist);
+    //Project cell centers to fromMesh getting the rank and the cell id owning the projection
+    //Organize projection cell ids and centers by rank for communication
+    long *fromClosestCellIds = new long[toMesh->getInternalCount()];
+    int *fromClosestCellRanks = new int[toMesh->getInternalCount()];
+    double *fromClosestCellDist = new double[toMesh->getInternalCount()];
+    fromTree.findPointClosestGlobalCell(toMesh->getInternalCount(),toCellCenters,fromClosestCellIds,fromClosestCellRanks,fromClosestCellDist);
 
-        //PArtitioning should ensure that all found cell are interior
-        assert(fromMesh->getCell(fromCellId).isInterior());
+    //Counting points per rank
+    std::vector<long> nofPointsPerRank(toMesh->getProcessorCount(),0);
+    for(int i = 0; i < toMesh->getInternalCount(); ++i) {
+        ++nofPointsPerRank[fromClosestCellRanks[i]];
+    }
+    //Map collecting (projectionId, originId, originCellCenter) per rank
+    std::vector<std::vector<InterpolationInfo>> interpolationInfoPerRank;
+    interpolationInfoPerRank.resize(toMesh->getProcessorCount());
+    for(int r = 0; r < toMesh->getProcessorCount(); ++r) {
+        interpolationInfoPerRank[r].reserve(nofPointsPerRank[r]);
+    }
+    for(int i = 0; i < toMesh->getInternalCount(); ++i) {
+        InterpolationInfo buffer;
+        buffer.originId = toCellIds[i];
+        buffer.originCellCenter = toCellCenters[i];
+        buffer.projectionId = fromClosestCellIds[i];
+        interpolationInfoPerRank[fromClosestCellRanks[i]].push_back(buffer);
+    }
 
-        //Find neighbours of fromCell for interpolation
+    //Local interpolation points ready to be interpolated
+    const std::vector<InterpolationInfo> & localInterpolationPoints = interpolationInfoPerRank[toMesh->getRank()];
+
+    //Interpolation points from other ranks
+    std::unordered_map<int,std::vector<InterpolationInfo>> otherRankIntepolationPoints;
+
+    //Communicate demanding rank and points InterpolationInfo for non-local interpolations
+    DataCommunicator interpolationComm(toMesh->getCommunicator());
+    // demanding rank (int), nof points, InterpolationInfo (2 long and 3 doubles) per point
+    for(int p = 0; p < toMesh->getProcessorCount(); ++p) {
+        if(p==toMesh->getRank() || nofPointsPerRank[p] == 0) {
+            continue;
+        }
+        std::size_t buffSize = sizeof(int) + sizeof(long) + (2*sizeof(long) * 3*sizeof(double))*nofPointsPerRank[p];
+        interpolationComm.setSend(p,buffSize);
+        SendBuffer &sendBuffer = interpolationComm.getSendBuffer(p);
+        sendBuffer << toMesh->getRank();
+        sendBuffer << nofPointsPerRank[p];
+        for(long i = 0; i < nofPointsPerRank[p]; ++i){
+            sendBuffer << interpolationInfoPerRank[p][i].originId;
+            sendBuffer << interpolationInfoPerRank[p][i].projectionId;
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[0];
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[1];
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[2];
+        }
+    }
+
+    interpolationComm.discoverRecvs();
+    interpolationComm.startAllRecvs();
+    interpolationComm.startAllSends();
+
+    //Interpolate locals
+    darray3 toCellCenter, neighCellCenter;
+    long fromCellId;
+    double weightSum, interpVal,cellCentersDist,weight;
+    std::vector<long> neighs;
+    for(const InterpolationInfo & info : localInterpolationPoints) {
+        toCellId = info.originId;
+        toCellCenter = info.originCellCenter;
+        fromCellId = info.projectionId;
         neighs.clear();
         fromMesh->findCellNeighs(fromCellId,&neighs);
-
         //Interpolation
         weightSum = 0.0;
         interpVal = 0.0;
@@ -152,6 +214,108 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
         toData->set(toCellId, fieldIndex, interpVal);
     }
 
+    std::vector<int> recvRanks = interpolationComm.getRecvRanks();
+    for(int rank : recvRanks) {
+        interpolationComm.waitRecv(rank);
+        RecvBuffer & recvBuffer = interpolationComm.getRecvBuffer(rank);
+        int demandingRank;
+        long nofPoints;
+        InterpolationInfo pointInterpolationInfo;
+        recvBuffer >> demandingRank;
+        recvBuffer >> nofPoints;
+        otherRankIntepolationPoints[demandingRank] = std::vector<InterpolationInfo>(nofPoints,pointInterpolationInfo);
+        for(long p = 0; p < nofPoints; ++p) {
+            recvBuffer >> pointInterpolationInfo.originId;
+            recvBuffer >> pointInterpolationInfo.projectionId;
+            recvBuffer >> pointInterpolationInfo.originCellCenter[0];
+            recvBuffer >> pointInterpolationInfo.originCellCenter[1];
+            recvBuffer >> pointInterpolationInfo.originCellCenter[2];
+            otherRankIntepolationPoints[demandingRank][p] = pointInterpolationInfo;
+        }
+    }
+
+    // Interpolate others and organize results by rank demanding interpolation
+    std::unordered_map<int,std::vector<InterpolatedInfo>> otherInterpolatedValues;
+    InterpolatedInfo emptyInterpolatedInfo;
+    for(const auto & rankInfo : otherRankIntepolationPoints) {
+        otherInterpolatedValues[rankInfo.first] = std::vector<InterpolatedInfo>(rankInfo.second.size(),emptyInterpolatedInfo);
+    }
+
+    for(const auto & rankInfo : otherRankIntepolationPoints) {
+        long pointCounter = 0;
+        for(const InterpolationInfo & info : rankInfo.second) {
+            toCellId = info.originId;
+            toCellCenter = info.originCellCenter;
+            fromCellId = info.projectionId;
+            neighs.clear();
+            fromMesh->findCellNeighs(fromCellId,&neighs);
+            //Interpolation
+            weightSum = 0.0;
+            interpVal = 0.0;
+            //fromCell contribution
+            neighCellCenter = fromMesh->evalCellCentroid(fromCellId);
+            cellCentersDist = norm2(neighCellCenter-toCellCenter);
+            weight = 1.0 / (cellCentersDist*cellCentersDist);
+            weightSum += weight;
+            interpVal += weight * fromData->at(fromCellId, fieldIndex);
+            for(const long & neigh : neighs) {
+                neighCellCenter = fromMesh->evalCellCentroid(neigh);
+                cellCentersDist = norm2(neighCellCenter-toCellCenter);
+                weight = 1.0 / (cellCentersDist*cellCentersDist);
+                weightSum += weight;
+                interpVal += weight * fromData->at(neigh,fieldIndex);
+            }
+            interpVal /= weightSum;
+            InterpolatedInfo interpolatedInfo;
+            interpolatedInfo.originId = toCellId;
+            interpolatedInfo.value = interpVal;
+            otherInterpolatedValues[rankInfo.first][pointCounter] = interpolatedInfo;
+            ++pointCounter;
+        }
+    }
+
+    //Communicate Interpolated values -
+    //buffer = (originId(long) + interpolated value(double))*nofInterpolatedValues + nofInterpolatedValues(long)
+    DataCommunicator interpolatedComm(toMesh->getCommunicator());
+    for(const auto & rankInfo : otherInterpolatedValues) {
+        std::size_t buffSize = sizeof(long) + (sizeof(long) + sizeof(double)) * rankInfo.second.size();
+        interpolatedComm.setSend(rankInfo.first,buffSize);
+        SendBuffer &sendBuffer = interpolatedComm.getSendBuffer(rankInfo.first);
+        sendBuffer << rankInfo.second.size();
+        for(long p = 0; p < rankInfo.second.size(); ++p) {
+            sendBuffer << rankInfo.second[p].originId;
+            sendBuffer << rankInfo.second[p].value;
+        }
+    }
+    interpolatedComm.discoverRecvs();
+    interpolatedComm.startAllRecvs();
+    interpolatedComm.startAllSends();
+
+    std::stringstream ss;
+    ss << "interpolates_" << toMesh->getRank() << ".txt";
+    std::ofstream out(ss.str().c_str());
+    recvRanks.clear();
+    recvRanks = interpolatedComm.getRecvRanks();
+    double value;
+    for(int rank : recvRanks) {
+        interpolatedComm.waitRecv(rank);
+        RecvBuffer & recvBuffer = interpolatedComm.getRecvBuffer(rank);
+        long nofPoints;
+        recvBuffer >> nofPoints;
+        for(long p = 0; p < nofPoints; ++p) {
+            recvBuffer >> toCellId;
+            recvBuffer >> value;
+            toData->set(toCellId, fieldIndex, value);
+            out << toCellId << " " << value << " " << rank << std::endl;
+        }
+    }
+    out.close();
+
+    delete [] toCellCenters;
+    delete [] toCellIds;
+    delete [] fromClosestCellIds;
+    delete [] fromClosestCellRanks;
+    delete [] fromClosestCellDist;
 };
 
 

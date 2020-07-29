@@ -45,6 +45,34 @@ private:
 
 };
 
+struct InterpolationInfo {
+    long projectionId;
+    long originId;
+    std::array<double,3> originCellCenter;
+
+    InterpolationInfo(){projectionId = 0; originId = 0; originCellCenter = {{0.0,0.0,0.0}};};
+    void display(std::ofstream & out) const {
+        out << "Origin id - Origin center - projected id" << std::endl;
+        out << originId << " - " << originCellCenter << " - " << projectionId << std::endl;
+    }
+    InterpolationInfo & operator=(InterpolationInfo & rhs) {
+        this->originCellCenter = rhs.originCellCenter;
+        this->projectionId = rhs.projectionId;
+        this->originId = rhs.originId;
+        return *this;
+    }
+};
+
+struct InterpolatedInfo {
+    long originId;
+    double value;
+    InterpolatedInfo(){originId = 0; value = 0.0;};
+    InterpolatedInfo & operator=(InterpolatedInfo & rhs) {
+        this->originId = rhs.originId;
+        this->value = rhs.value;
+        return *this;
+    }
+};
 
 }
 #endif /* SRC_COUPLINGUTILS_HPP_ */

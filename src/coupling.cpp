@@ -97,7 +97,7 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 {
     m_inputDataNames = inputNames;
     m_outputDataNames = outputNames;
-    m_system = std::unique_ptr<StencilScalarSolver>(new StencilScalarSolver(disciplineName,false));
+    m_system = std::unique_ptr<StencilScalarSolver>(new StencilScalarSolver(disciplineName,true));
 };
 
 
@@ -182,8 +182,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     updateDisciplineGhosts();
 
-    std::string name = "D_Nf";
-    m_scaledDisciplineMesh->write(name);
+//    std::string name = "D_Nf";
+//    m_scaledDisciplineMesh->write(name);
 
 
     //Prepare discipline

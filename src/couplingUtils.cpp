@@ -291,9 +291,9 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
     interpolatedComm.startAllRecvs();
     interpolatedComm.startAllSends();
 
-    std::stringstream ss;
-    ss << "interpolates_" << toMesh->getRank() << ".txt";
-    std::ofstream out(ss.str().c_str());
+//    std::stringstream ss;
+//    ss << "interpolates_" << toMesh->getRank() << ".txt";
+//    std::ofstream out(ss.str().c_str());
     recvRanks.clear();
     recvRanks = interpolatedComm.getRecvRanks();
     double value;
@@ -306,10 +306,10 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
             recvBuffer >> toCellId;
             recvBuffer >> value;
             toData->set(toCellId, fieldIndex, value);
-            out << toCellId << " " << value << " " << rank << std::endl;
+//            out << toCellId << " " << value << " " << rank << std::endl;
         }
     }
-    out.close();
+//    out.close();
 
     delete [] toCellCenters;
     delete [] toCellIds;

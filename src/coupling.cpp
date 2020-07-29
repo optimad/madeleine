@@ -252,7 +252,6 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     name = "intepolatedD_Nf";
     m_scaledDisciplineMesh->write(name);
 
-
     //Update discipline ghost cell values
     std::cout << "Updatings discipline ghosts" << std::endl;
     updateDisciplineGhosts();
@@ -277,7 +276,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
 //    name = "Nf";
 //    m_scaledNeutralMesh->write(name);
-    dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
+    //dynamicPartitionNeutralMeshByNeutralMeshFilePartitionedDiscipline();
 
     //Interpolate from D_{N_f} to N_{D_{N_f}}
     std::cout << "D_{N_f} to N_{D_{N_f}} interpolation." << std::endl;
@@ -288,7 +287,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     name = "interpolatedSolutionN_{D_Nf}";
     m_scaledNeutralMesh->write(name);
 
-    dynamicPartitionNeutralMeshByNeutralMeshWithData();
+    //dynamicPartitionNeutralMeshByNeutralMeshWithData();
 
     name = "unsortedNf";
     m_scaledNeutralMesh->write(name);

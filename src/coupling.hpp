@@ -25,6 +25,7 @@
 #include "commons.hpp"
 #include "couplingUtils.hpp"
 #include "communications.hpp"
+#include "matrixManager.hpp"
 
 using namespace bitpit;
 
@@ -109,7 +110,7 @@ private:
     std::string m_name;
 
     int m_kernel;
-    std::unique_ptr<StencilScalarSolver> m_system;
+    std::unique_ptr<StencilScalarSolverHandler> m_system;
     std::vector<StencilScalar> m_helmoltzStencils;
 
     double m_thickness;

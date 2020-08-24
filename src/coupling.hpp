@@ -60,6 +60,7 @@ public:
     long getNeutralGlobalConsecutiveId(long id);
     void close();
     void computeJacobianRow(long index, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
+    JacobianMatricesManager* getJacobianManager();
 
 private:
     void readUnitDisciplineMesh();
@@ -112,6 +113,7 @@ private:
     int m_kernel;
     std::unique_ptr<StencilScalarSolverHandler> m_system;
     std::vector<StencilScalar> m_helmoltzStencils;
+    std::unique_ptr<JacobianMatricesManager> m_jacobianManager;
 
     double m_thickness;
     bool m_innerSphere;

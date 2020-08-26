@@ -209,6 +209,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     assemblySimplifiedDiscreteHelmholtzSystem();
     updateSystemRHS(); //qui non serve solo testing
 
+    getJacobianManager()->computeInterpolationMatrices(m_scaledDisciplineMesh.get(),&m_disciplineNumberingInfo,
+            m_scaledNeutralMesh.get(),&m_neutralNumberingInfo);
 
 #else
     m_unitDisciplineMesh->reset();

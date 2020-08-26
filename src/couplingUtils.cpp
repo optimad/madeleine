@@ -282,7 +282,7 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
         interpolatedComm.setSend(rankInfo.first,buffSize);
         SendBuffer &sendBuffer = interpolatedComm.getSendBuffer(rankInfo.first);
         sendBuffer << rankInfo.second.size();
-        for(long p = 0; p < rankInfo.second.size(); ++p) {
+        for(size_t p = 0; p < rankInfo.second.size(); ++p) {
             sendBuffer << rankInfo.second[p].originId;
             sendBuffer << rankInfo.second[p].value;
         }
@@ -309,6 +309,339 @@ void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> 
 //            out << toCellId << " " << value << " " << rank << std::endl;
         }
     }
+//    out.close();
+
+    delete [] toCellCenters;
+    delete [] toCellIds;
+    delete [] fromClosestCellIds;
+    delete [] fromClosestCellRanks;
+    delete [] fromClosestCellDist;
+};
+
+
+/*!
+    Interpolate cell collocated data from the "fromMesh" to the "toMesh"
+
+    \param[in] fromMesh the interpolation origin mesh
+    \param[in] fromData the data of the origin to be interpolated (PiercedStorage)
+    \param[in] toMesh the interpolation destination mesh
+    \param[in] toData the interpolated data on the destination mesh (PiercedStorage)
+    \return the scaled mesh
+*/
+void interpolateFromToMatrix(Mat * interpolationMatrix, SurfUnstructured * fromMesh, PatchNumberingInfo * fromNumberingInfo, SurfUnstructured * toMesh, PatchNumberingInfo * toNumberingInfo){
+
+    log::cout() << "Compute Interpolation Matrix... " << std::endl;
+
+    std::vector<MatrixRow> rowCollection(toMesh->getInternalCount());
+    int rowCounter = 0;
+
+    SurfaceSkdTree fromTree(fromMesh, false);//costruisce i ghost
+    fromTree.build(1);
+
+    //Collect cell center into array to be passed to parallel find PointClosest cell
+    darray3 *toCellCenters = new darray3[toMesh->getInternalCount()];
+    long *toCellIds = new long[toMesh->getInternalCount()];
+    long toCellId = 0, cellCounter = 0;
+    PiercedVector<Cell>::iterator beginInternalCells = toMesh->internalBegin();
+    PiercedVector<Cell>::iterator endInternalCells = toMesh->internalEnd();
+    for(PiercedVector<Cell>::iterator itCell = beginInternalCells; itCell != endInternalCells; ++itCell) {
+        toCellId = itCell->getId();
+        toCellCenters[cellCounter] = toMesh->evalCellCentroid(toCellId);
+        toCellIds[cellCounter] = toCellId;
+        ++cellCounter;
+    }
+
+    //Project cell centers to fromMesh getting the rank and the cell id owning the projection
+    //Organize projection cell ids and centers by rank for communication
+    long *fromClosestCellIds = new long[toMesh->getInternalCount()];
+    int *fromClosestCellRanks = new int[toMesh->getInternalCount()];
+    double *fromClosestCellDist = new double[toMesh->getInternalCount()];
+    fromTree.findPointClosestGlobalCell(toMesh->getInternalCount(),toCellCenters,fromClosestCellIds,fromClosestCellRanks,fromClosestCellDist);
+
+    //Counting points per rank
+    std::vector<long> nofPointsPerRank(toMesh->getProcessorCount(),0);
+    for(int i = 0; i < toMesh->getInternalCount(); ++i) {
+        ++nofPointsPerRank[fromClosestCellRanks[i]];
+    }
+    //Map collecting (projectionId, originId, originCellCenter) per rank
+    std::vector<std::vector<InterpolationInfo>> interpolationInfoPerRank;
+    interpolationInfoPerRank.resize(toMesh->getProcessorCount());
+    for(int r = 0; r < toMesh->getProcessorCount(); ++r) {
+        interpolationInfoPerRank[r].reserve(nofPointsPerRank[r]);
+    }
+    for(int i = 0; i < toMesh->getInternalCount(); ++i) {
+        InterpolationInfo buffer;
+        buffer.originId = toCellIds[i];
+        buffer.originCellCenter = toCellCenters[i];
+        buffer.projectionId = fromClosestCellIds[i];
+        interpolationInfoPerRank[fromClosestCellRanks[i]].push_back(buffer);
+    }
+
+    //Local interpolation points ready to be interpolated
+    const std::vector<InterpolationInfo> & localInterpolationPoints = interpolationInfoPerRank[toMesh->getRank()];
+
+    //Interpolation points from other ranks
+    std::unordered_map<int,std::vector<InterpolationInfo>> otherRankIntepolationPoints;
+
+    //Communicate demanding rank and points InterpolationInfo for non-local interpolations
+    DataCommunicator interpolationComm(toMesh->getCommunicator());
+    // demanding rank (int), nof points, InterpolationInfo (2 long and 3 doubles) per point
+    for(int p = 0; p < toMesh->getProcessorCount(); ++p) {
+        if(p==toMesh->getRank() || nofPointsPerRank[p] == 0) {
+            continue;
+        }
+        std::size_t buffSize = sizeof(int) + sizeof(long) + (2*sizeof(long) * 3*sizeof(double))*nofPointsPerRank[p];
+        interpolationComm.setSend(p,buffSize);
+        SendBuffer &sendBuffer = interpolationComm.getSendBuffer(p);
+        sendBuffer << toMesh->getRank();
+        sendBuffer << nofPointsPerRank[p];
+        for(long i = 0; i < nofPointsPerRank[p]; ++i){
+            sendBuffer << interpolationInfoPerRank[p][i].originId;
+            sendBuffer << interpolationInfoPerRank[p][i].projectionId;
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[0];
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[1];
+            sendBuffer << interpolationInfoPerRank[p][i].originCellCenter[2];
+        }
+    }
+
+    interpolationComm.discoverRecvs();
+    interpolationComm.startAllRecvs();
+    interpolationComm.startAllSends();
+
+    //Interpolate locals
+    darray3 toCellCenter, neighCellCenter;
+    long fromCellId;
+    double weightSum,cellCentersDist,weight;
+    std::vector<long> neighs;
+    std::vector<int> globalNeighs;
+    std::vector<double> rowElements;
+    for(const InterpolationInfo & info : localInterpolationPoints) {
+        toCellId = info.originId;
+        toCellCenter = info.originCellCenter;
+        fromCellId = info.projectionId;
+        neighs.clear();
+        rowElements.clear();
+        globalNeighs.clear();
+
+        fromMesh->findCellNeighs(fromCellId,&neighs);
+        globalNeighs.resize(neighs.size() + 1);
+        rowElements.resize(neighs.size() + 1);
+
+        //Interpolation
+        weightSum = 0.0;
+        //fromCell contribution
+        long toCellGlobalId = toNumberingInfo->getCellConsecutiveId(toCellId);
+        long fromCellGlobalId = fromNumberingInfo->getCellConsecutiveId(fromCellId);
+        std::array<double,3> fromCellCenter = fromMesh->evalCellCentroid(fromCellId);
+        cellCentersDist = norm2(fromCellCenter-toCellCenter);
+        weight = 1.0 / (cellCentersDist*cellCentersDist);
+        weightSum += weight;
+        globalNeighs[0] = fromCellGlobalId;
+        rowElements[0] = weight;
+
+        int counter = 1;
+        for(const long & neigh : neighs) {
+            neighCellCenter = fromMesh->evalCellCentroid(neigh);
+            cellCentersDist = norm2(neighCellCenter-toCellCenter);
+            weight = 1.0 / (cellCentersDist*cellCentersDist);
+            weightSum += weight;
+            globalNeighs[counter] = fromNumberingInfo->getCellConsecutiveId(neigh);
+            rowElements[counter] = weight;
+            ++counter;
+        }
+
+        rowElements /= weightSum;
+
+        MatrixRow matrixRow(toCellGlobalId,globalNeighs,rowElements);
+        rowCollection[rowCounter] = matrixRow;
+        ++rowCounter;
+        //MatSetValues(*interpolationMatrix,1,row,1,globalNeighs.data(),rowElements.data(),INSERT_VALUES);
+    }
+
+    std::vector<int> recvRanks = interpolationComm.getRecvRanks();
+    for(int rank : recvRanks) {
+        interpolationComm.waitRecv(rank);
+        RecvBuffer & recvBuffer = interpolationComm.getRecvBuffer(rank);
+        int demandingRank;
+        long nofPoints;
+        InterpolationInfo pointInterpolationInfo;
+        recvBuffer >> demandingRank;
+        recvBuffer >> nofPoints;
+        otherRankIntepolationPoints[demandingRank] = std::vector<InterpolationInfo>(nofPoints,pointInterpolationInfo);
+        for(long p = 0; p < nofPoints; ++p) {
+            recvBuffer >> pointInterpolationInfo.originId;
+            recvBuffer >> pointInterpolationInfo.projectionId;
+            recvBuffer >> pointInterpolationInfo.originCellCenter[0];
+            recvBuffer >> pointInterpolationInfo.originCellCenter[1];
+            recvBuffer >> pointInterpolationInfo.originCellCenter[2];
+            otherRankIntepolationPoints[demandingRank][p] = pointInterpolationInfo;
+        }
+    }
+
+    // Interpolate others and organize results by rank demanding interpolation
+    std::unordered_map<int,std::vector<InterpolationMatrixInfo>> otherInterpolationElements;
+    InterpolationMatrixInfo emptyInterpolatedInfo;
+    for(const auto & rankInfo : otherRankIntepolationPoints) {
+        otherInterpolationElements[rankInfo.first] = std::vector<InterpolationMatrixInfo>(rankInfo.second.size(),emptyInterpolatedInfo);
+    }
+
+    for(const auto & rankInfo : otherRankIntepolationPoints) {
+        long pointCounter = 0;
+        for(const InterpolationInfo & info : rankInfo.second) {
+            toCellId = info.originId;
+            toCellCenter = info.originCellCenter;
+            fromCellId = info.projectionId;
+            neighs.clear();
+            rowElements.clear();
+            globalNeighs.clear();
+
+            fromMesh->findCellNeighs(fromCellId,&neighs);
+            globalNeighs.resize(neighs.size() + 1);
+            rowElements.resize(neighs.size() + 1);
+
+            //Interpolation
+            weightSum = 0.0;
+            //fromCell contribution
+            long toCellGlobalId = toNumberingInfo->getCellConsecutiveId(toCellId);
+            long fromCellGlobalId = fromNumberingInfo->getCellConsecutiveId(fromCellId);
+            std::array<double,3> fromCellCenter = fromMesh->evalCellCentroid(fromCellId);
+            cellCentersDist = norm2(fromCellCenter-toCellCenter);
+            weight = 1.0 / (cellCentersDist*cellCentersDist);
+            weightSum += weight;
+            globalNeighs[0] = fromCellGlobalId;
+            rowElements[0] = weight;
+
+            int counter = 1;
+            for(const long & neigh : neighs) {
+                neighCellCenter = fromMesh->evalCellCentroid(neigh);
+                cellCentersDist = norm2(neighCellCenter-toCellCenter);
+                weight = 1.0 / (cellCentersDist*cellCentersDist);
+                weightSum += weight;
+                globalNeighs[counter] = fromNumberingInfo->getCellConsecutiveId(neigh);
+                rowElements[counter] = weight;
+                ++counter;
+            }
+            rowElements /= weightSum;
+
+            InterpolationMatrixInfo interpolationMatrixInfo;
+            interpolationMatrixInfo.originConsecutiveId = toCellGlobalId;
+            interpolationMatrixInfo.nofElements = globalNeighs.size();
+            interpolationMatrixInfo.indices = globalNeighs;
+            interpolationMatrixInfo.elements = rowElements;
+            otherInterpolationElements[rankInfo.first][pointCounter] = interpolationMatrixInfo;
+            ++pointCounter;
+        }
+    }
+
+//    std::stringstream sss;
+//    sss << "other_" << toMesh->getRank() << ".txt";
+//    std::ofstream out1(sss.str().c_str());
+//    for(const auto other : otherInterpolationElements) {
+//        for(const auto point : other.second) {
+//            out1 << point.originConsecutiveId << " - " << point.nofElements << " - " << point.indices << std::endl;
+//        }
+//    }
+//    out1.close();
+
+    //Communicate Interpolation elements -
+    //buffer = (originId(long) + interpolated value(double))*nofInterpolatedValues + nofInterpolatedValues(long)
+    DataCommunicator interpolationMatrixComm(toMesh->getCommunicator());
+    for(const auto & rankInfo : otherInterpolationElements) {
+        //std::size_t buffSize = sizeof(long) + (sizeof(long) + sizeof(double)) * rankInfo.second.size();
+        std::size_t buffSize = sizeof(long); // number of points
+        for(const auto point : rankInfo.second) {
+            buffSize += sizeof(int); // nofElements
+            buffSize += (sizeof(int) + sizeof(double)) * point.elements.size(); // indices and elements
+            buffSize += sizeof(long); // orginConsecutiveId
+        }
+        interpolationMatrixComm.setSend(rankInfo.first,buffSize);
+        SendBuffer &sendBuffer = interpolationMatrixComm.getSendBuffer(rankInfo.first);
+        sendBuffer << rankInfo.second.size();
+        for(size_t p = 0; p < rankInfo.second.size(); ++p) {
+            sendBuffer << rankInfo.second[p].nofElements;
+            sendBuffer << rankInfo.second[p].originConsecutiveId;
+            for(size_t e = 0; e < rankInfo.second[p].indices.size(); ++e) {
+                sendBuffer << rankInfo.second[p].indices[e];
+                sendBuffer << rankInfo.second[p].elements[e];
+            }
+        }
+    }
+    interpolationMatrixComm.discoverRecvs();
+    interpolationMatrixComm.startAllRecvs();
+    interpolationMatrixComm.startAllSends();
+
+    recvRanks.clear();
+    recvRanks = interpolationMatrixComm.getRecvRanks();
+    long row[1];
+    int nofElements = 0;
+    std::vector<int> indices;
+    std::vector<double> elements;
+    for(int rank : recvRanks) {
+        interpolationMatrixComm.waitRecv(rank);
+        RecvBuffer & recvBuffer = interpolationMatrixComm.getRecvBuffer(rank);
+        long nofPoints;
+        recvBuffer >> nofPoints;
+        for(long p = 0; p < nofPoints; ++p) {
+            recvBuffer >> nofElements;
+            indices.resize(nofElements);
+            elements.resize(nofElements);
+            recvBuffer >> row[0];
+            for(int e = 0; e < nofElements; ++e) {
+                recvBuffer >> indices[e];
+                recvBuffer >> elements[e];
+            }
+
+            MatrixRow matrixRow(int(row[0]),indices,elements);
+            rowCollection[rowCounter] = matrixRow;
+            ++rowCounter;
+            //MatSetValues(*interpolationMatrix, 1, row, nofElements, indices.data(), elements.data(),INSERT_VALUES);
+        }
+    }
+
+    //Pre-Allocate
+    std::vector<int> d_nnz(toMesh->getInternalCount()), o_nnz(toMesh->getInternalCount());
+    for( const auto r : rowCollection) {
+        int rowLocalConsecutiveId = r.row - toNumberingInfo->getCellGlobalCountOffset();
+        for(const auto i : r.indices) {
+            if(fromNumberingInfo->getCellRankFromConsecutive(i) == fromMesh->getRank()) {
+                ++d_nnz[rowLocalConsecutiveId];
+            } else {
+                ++o_nnz[rowLocalConsecutiveId];
+            }
+        }
+    }
+    MatCreateAIJ(toMesh->getCommunicator(), toMesh->getInternalCount(),fromMesh->getInternalCount(), PETSC_DETERMINE, PETSC_DETERMINE,
+            0,d_nnz.data(),0,o_nnz.data(),interpolationMatrix);
+
+    //Set elements
+//    std::stringstream ss;
+//    ss << "rows_" << toMesh->getRank() << ".txt";
+//    std::ofstream out(ss.str().c_str());
+    for(const auto r : rowCollection) {
+        int rowArray[1];
+        rowArray[0] = r.row;
+//        out << rowArray[0] << " - " << r.indices << std::endl;
+        MatSetValues(*interpolationMatrix,1,rowArray,r.indices.size(),r.indices.data(),r.elements.data(),INSERT_VALUES);
+    }
+
+    MatAssemblyBegin(*interpolationMatrix, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(*interpolationMatrix, MAT_FINAL_ASSEMBLY);
+
+    //DEBUG
+//    PetscViewer matViewer;
+//    PetscViewerCreate(toMesh->getCommunicator(), &matViewer);
+//    PetscViewerSetType(matViewer, PETSCVIEWERASCII);
+//    PetscViewerFileSetMode(matViewer, FILE_MODE_WRITE);
+//    PetscViewerPushFormat(matViewer, PETSC_VIEWER_ASCII_MATLAB);
+//
+//    std::stringstream filePathStream;
+//    filePathStream.str(std::string());
+//    filePathStream << "./interpolationMatrix.txt";
+//    PetscViewerFileSetName(matViewer, filePathStream.str().c_str());
+//    MatView(*interpolationMatrix, matViewer);
+//    PetscViewerDestroy(&matViewer);
+
+
 //    out.close();
 
     delete [] toCellCenters;

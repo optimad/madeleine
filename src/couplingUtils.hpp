@@ -12,6 +12,7 @@
 #include "bitpit_IO.hpp"
 #include "surfunstructured.hpp"
 #include "commons.hpp"
+#include <petscmat.h>
 
 using namespace bitpit;
 
@@ -19,6 +20,7 @@ namespace coupling {
 //SurfUnstructured scale(const SurfUnstructured & unitRadiusSphereMesh, double radius);
 void interpolateFromTo(SurfUnstructured * fromMesh, PiercedVector<double> * fromData, SurfUnstructured * toMesh, PiercedVector<double> * toData);
 void interpolateFromTo(SurfUnstructured * fromMesh, PiercedStorage<double,long> * fromData, SurfUnstructured * toMesh, PiercedStorage<double,long> * toData, int fieldIndex = -1);
+void interpolateFromToMatrix(Mat * interpolationMatrix, SurfUnstructured * fromMesh, PatchNumberingInfo * fromNumberingInfo, SurfUnstructured * toMesh, PatchNumberingInfo * toNumberingInfo);
 void initDoubleDataOnMesh(SurfUnstructured * mesh, PiercedVector<double>* data);
 void initDataOnMeshFromArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize);
 void moveDataOnMeshToArray(SurfUnstructured * mesh, PiercedVector<double>* data, double* array, size_t arraySize);
@@ -70,6 +72,35 @@ struct InterpolatedInfo {
     InterpolatedInfo & operator=(InterpolatedInfo & rhs) {
         this->originId = rhs.originId;
         this->value = rhs.value;
+        return *this;
+    }
+};
+
+struct InterpolationMatrixInfo {
+    long originConsecutiveId;
+    int nofElements;
+    std::vector<int> indices;
+    std::vector<double> elements;
+    InterpolationMatrixInfo(){originConsecutiveId = 0; nofElements = 0;};
+    InterpolationMatrixInfo & operator=(InterpolationMatrixInfo & rhs) {
+        this->originConsecutiveId = rhs.originConsecutiveId;
+        this->nofElements = rhs.nofElements;
+        this->indices = rhs.indices;
+        this->elements = rhs.elements;
+        return *this;
+    }
+};
+
+struct MatrixRow {
+    int row;
+    std::vector<int> indices;
+    std::vector<double> elements;
+    MatrixRow(){row=-1;};
+    MatrixRow(int r, std::vector<int> & i, std::vector<double> & e){row = r; indices = i; elements = e;};
+    MatrixRow& operator=(MatrixRow & rhs) {
+        this->row = rhs.row;
+        this->indices = rhs.indices;
+        this->elements = rhs.elements;
         return *this;
     }
 };

@@ -264,14 +264,6 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     std::cout << "Updatings discipline ghosts" << std::endl;
     updateDisciplineGhosts();
 
-//    if (m_kernel == 1){
-//        disciplineKernel1();
-//    	std::cout << "Running Kernel 1" << std::endl;
-//	}
-//    else{
-//    	std::cout << "Running Kernel 2" << std::endl;
-//    	disciplineKernel2();
-//    }
     //Solve Radiation problem
     std::cout << "Solve radiation problem" << std::endl;
     disciplineKernel();
@@ -304,22 +296,6 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     name = "sortedNf";
     m_scaledNeutralMesh->write(name);
-
-    for(int r = 0; r < m_nprocs; ++r) {
-        if(m_rank == r) {
-            for(const Cell & cell : m_scaledNeutralMesh->getCells()) {
-                if(cell.isInterior()) {
-                    /* std::cout << "before interior Rank " << m_rank << " id " << cell.getId() << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl; */
-                } else {
-                    /* std::cout << "before ghost Rank " << m_rank << " id " << cell.getId() << " owner " << m_scaledNeutralMesh->getCellRank(cell.getId()) << " cc = " << m_scaledNeutralMesh->evalCellCentroid(cell.getId()) << std::endl; */
-                }
-                std::cout << std::flush;
-            }
-
-        }
-        MPI_Barrier(m_comm);
-        std::cout << std::flush;
-    }
 
     //Update C-array to pass data to NUMPY array used by GEMS
     std::size_t counter = 0;

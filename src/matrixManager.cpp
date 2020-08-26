@@ -6,6 +6,7 @@
  */
 
 #include "matrixManager.hpp"
+#include "couplingUtils.hpp"
 
 JacobianMatricesManager::JacobianMatricesManager(std::string name, MPI_Comm comm,
         StencilScalarSolverHandler & ellipticLinearSystem)
@@ -15,6 +16,8 @@ JacobianMatricesManager::JacobianMatricesManager(std::string name, MPI_Comm comm
 JacobianMatricesManager::~JacobianMatricesManager() {
     MatDestroy(&m_EllipticOperatorJacobian);
     MatDestroy(&m_EllipticOperatorInverse);
+    MatDestroy(&m_DisciplineToNeutralInterpolatorJacobian);
+    MatDestroy(&m_NeutralToDisciplineInterpolatorJacobian);
 }
 
 void JacobianMatricesManager::computeEllipticOperatorInverse(SurfUnstructured* mesh, PatchNumberingInfo & numberingInfo) {
@@ -46,24 +49,34 @@ void JacobianMatricesManager::computeEllipticOperatorInverse(SurfUnstructured* m
     //Compute inverse
     MatMatSolve(A,B,m_EllipticOperatorInverse);
 
-
-    //MatView()
-    PetscViewer matViewer;
-    PetscViewerCreate(m_comm, &matViewer);
-    PetscViewerSetType(matViewer, PETSCVIEWERASCII);
-    PetscViewerFileSetMode(matViewer, FILE_MODE_WRITE);
-    PetscViewerPushFormat(matViewer, PETSC_VIEWER_ASCII_MATLAB);
-
-    std::stringstream filePathStream;
-    filePathStream.str(std::string());
-    filePathStream << "./inverse.txt";
-    PetscViewerFileSetName(matViewer, filePathStream.str().c_str());
-    MatView(m_EllipticOperatorInverse, matViewer);
-    PetscViewerDestroy(&matViewer);
+//    //DEBUG
+//    PetscViewer matViewer;
+//    PetscViewerCreate(m_comm, &matViewer);
+//    PetscViewerSetType(matViewer, PETSCVIEWERASCII);
+//    PetscViewerFileSetMode(matViewer, FILE_MODE_WRITE);
+//    PetscViewerPushFormat(matViewer, PETSC_VIEWER_ASCII_MATLAB);
+//
+//    std::stringstream filePathStream;
+//    filePathStream.str(std::string());
+//    filePathStream << "./inverse.txt";
+//    PetscViewerFileSetName(matViewer, filePathStream.str().c_str());
+//    MatView(m_EllipticOperatorInverse, matViewer);
+//    PetscViewerDestroy(&matViewer);
 
     MatDestroy(&A);
     MatDestroy(&B);
 }
+
+void JacobianMatricesManager::computeInterpolationMatrices(SurfUnstructured * disciplineMesh, PatchNumberingInfo * disciplineNumberingInfo,
+        SurfUnstructured * neutralMesh, PatchNumberingInfo * neutralNumberingInfo) {
+
+    coupling::interpolateFromToMatrix(&m_DisciplineToNeutralInterpolatorJacobian,disciplineMesh,disciplineNumberingInfo,
+            neutralMesh,neutralNumberingInfo);
+    coupling::interpolateFromToMatrix(&m_NeutralToDisciplineInterpolatorJacobian,neutralMesh,neutralNumberingInfo,
+            disciplineMesh,disciplineNumberingInfo);
+
+}
+
 
 StencilScalarSolverHandler::StencilScalarSolverHandler(const std::string & prefix, bool debug) : StencilScalarSolver(prefix,debug) {
 }

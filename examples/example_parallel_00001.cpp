@@ -110,10 +110,13 @@ void test00001( int argc, char *argv[] ) {
         //std::array<double,3> sourceDirection = {{1.0,0.0,0.0}};
         std::vector<double> sourceDirection(3,0.0);
         sourceDirection[0] = 1.0;
+        double thermalDiffusivityCoefficient = 0.001;
+        double emissivity = 0.001;
 
         parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,
-                radius,radius,thickness,isInnerSphere,sourceIntensity,sourceDirection
-                ,cellIndicesPerRank);
+                radius,radius,thickness,isInnerSphere,sourceIntensity,sourceDirection,
+                thermalDiffusivityCoefficient, emissivity,
+                cellIndicesPerRank);
         //
         //    PiercedVector<double> neutralData;
         //    coupling::initDoubleDataOnMesh(parallelToyDiscipline.getNeutralMesh(),&neutralData);

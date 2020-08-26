@@ -45,10 +45,12 @@ public:
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereRadius, double sphereNeutralRadius,
             double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
+            double thermalDiffusivityCoefficient, double emissivity,
             const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereDisciplineRadius, double sphereNeutralRadius,
             double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
+            double thermalDiffusivityCoefficient, double emissivity,
             const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size, double newRadius, double otherRadius);
     const std::vector<std::string> & getInputDataNames();
@@ -119,6 +121,8 @@ private:
     bool m_innerSphere;
     double m_sourceMaxIntensity;
     std::array<double,3> m_sourceDirection;
+    double m_thermalDiffusivityCoefficient; //linear radius dependency
+    double m_emissivity;
 
     void scaleMeshToRadius(std::unique_ptr<SurfUnstructured> & mesh, double & oldRadius, const double & newRadius);
 

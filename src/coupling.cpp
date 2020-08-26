@@ -104,9 +104,11 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
         double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
+        double thermalDiffusivityCoefficient, double emissivity,
         const std::vector<int> & globalNeutralId2MeshFileRank){
     int kernel = 1;
     initialize(unitDisciplineMeshFile, unitNeutralMeshFile, disciplineRadius, neutralRadius, thickness, innerSphere, sourceIntensity, sourceDirection,
+            thermalDiffusivityCoefficient, emissivity,
             globalNeutralId2MeshFileRank, kernel);
 }
 
@@ -123,6 +125,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 */
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
         double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
+        double thermalDiffusivityCoefficient, double emissivity,
         const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
@@ -131,6 +134,8 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_thickness = thickness;
     m_innerSphere = innerSphere;
     m_sourceMaxIntensity = sourceIntensity;
+    m_thermalDiffusivityCoefficient = thermalDiffusivityCoefficient;
+    m_emissivity = emissivity;
 
     assert(sourceDirection.size() >= 3);
     for(int i = 0; i < 3; ++i) {
@@ -1277,9 +1282,8 @@ void MeshCoupling::assemblySimplifiedDiscreteHelmholtzSystem() {
 
     //Compute Stencils
     computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
-    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     if(!m_innerSphere) {
-        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, coefficient);
+        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
     }
 
     //Assembly matrix and linear system
@@ -1298,9 +1302,8 @@ void MeshCoupling::updateSimplifiedDiscreteHelmholtzSystem() {
 
     //Compute Stencils
     computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
-    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     if(!m_innerSphere) {
-        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, coefficient);
+        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
     }
 
     //update matrix
@@ -1392,7 +1395,6 @@ void MeshCoupling::computeHelmholtzStencilsFromLaplaceStencils(std::vector<Stenc
 */
 void MeshCoupling::updateSystemRHS() {
 
-    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     long nLocalRow = m_system->getRowCount();
     double *rhs = m_system->getRHSRawPtr();
     if(m_innerSphere) {
@@ -1416,7 +1418,7 @@ void MeshCoupling::updateSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 std::array<double,3> cellNormal = m_scaledDisciplineMesh->evalFacetNormal(cellId);
-                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal) + coefficient * m_disciplineData.at(cellId,m_inputField);
+                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal) + m_emissivity * m_disciplineData.at(cellId,m_inputField);
             }
         }
     }
@@ -1428,7 +1430,7 @@ void MeshCoupling::updateSystemRHS() {
 */
 double MeshCoupling::evalThermalDiffusivity() {
 
-    double thermalDiffusivity = 1.0;//coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
+    double thermalDiffusivity = m_thermalDiffusivityCoefficient * m_disciplineRadius;//coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
 
     return thermalDiffusivity;
 }
@@ -1466,7 +1468,6 @@ void MeshCoupling::solveSytem() {
 */
 void MeshCoupling::updateOutputField() {
 
-    double coefficient = 0.001;//TODO set radiation coefficient from discipline constructor
     long nLocalRow = m_system->getRowCount();
     const double *solution = m_system->getSolutionRawReadPtr();
     if(m_innerSphere) {
@@ -1488,7 +1489,7 @@ void MeshCoupling::updateOutputField() {
                 long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
                 assert(cellLocalConsecutiveId < nLocalRow);
 
-                double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * coefficient;
+                double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * m_emissivity;
                 m_disciplineData.set(cellId,m_outputField,outputValue);
                 m_disciplineData.set(cellId,m_inputField,solution[cellLocalConsecutiveId]);
             }

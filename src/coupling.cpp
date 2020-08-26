@@ -332,6 +332,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     //Neutral mesh numbering info is needed in computeJacobianRow. No need to update it after any partitioning. But DO NOT use it if old.
     m_neutralNumberingInfo.update();
 
+    getJacobianManager()->computeEllipticOperatorInverse(m_scaledDisciplineMesh.get(),m_disciplineNumberingInfo);
 };
 
 /*!

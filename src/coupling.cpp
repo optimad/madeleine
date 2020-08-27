@@ -1340,7 +1340,7 @@ void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilS
 //                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
 //                stencil.display(std::cout);
 //            }
-            stencil = stencil * m_thickness * evalThermalDiffusivity();
+            stencil = (-1.0) * stencil * m_thickness * evalThermalDiffusivity();
         }
     }
 

@@ -21,11 +21,12 @@ class JacobianMatricesManager {
     std::string m_name;
     Mat m_NeutralToDisciplineInterpolatorJacobian;
     Mat m_DisciplineToNeutralInterpolatorJacobian;
-    Mat m_EllipticOperatorJacobian;
     Mat m_EllipticOperatorInverse;
-    Mat m_Jacobian;
+    Mat m_OutputInputJacobian;
+    Mat m_OutputControlJacobian;
     MPI_Comm m_comm;
     StencilScalarSolverHandler & m_ellipticLinearSystem;
+    bool m_reuseJacobianMatrix;
 
 public:
     JacobianMatricesManager(std::string name, MPI_Comm comm,
@@ -34,6 +35,7 @@ public:
     void computeEllipticOperatorInverse(SurfUnstructured* mesh, PatchNumberingInfo & numberingInfo);
     void computeInterpolationMatrices(SurfUnstructured * disciplineMesh, PatchNumberingInfo * disciplineNumberingInfo,
             SurfUnstructured * neutralMesh, PatchNumberingInfo * neutralNumberingInfo);
+    void computeOutputInputJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline);
     Mat & getNeutralToDisciplineInterpolatorJacobian();
     Mat & getDisciplineToNeutralInterpolatorJacobian();
     Mat & getEllipticOperatorJacobian();

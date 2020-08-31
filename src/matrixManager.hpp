@@ -36,6 +36,8 @@ public:
     void computeInterpolationMatrices(SurfUnstructured * disciplineMesh, PatchNumberingInfo * disciplineNumberingInfo,
             SurfUnstructured * neutralMesh, PatchNumberingInfo * neutralNumberingInfo);
     void computeOutputInputJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline);
+    void computeOutputControlJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline, double radius,
+            const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo);
     Mat & getNeutralToDisciplineInterpolatorJacobian();
     Mat & getDisciplineToNeutralInterpolatorJacobian();
     Mat & getEllipticOperatorJacobian();

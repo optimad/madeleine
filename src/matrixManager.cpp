@@ -174,6 +174,63 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
 
 }
 
+void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline, double radius,
+        const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo) {
+
+    //Set temperature in a Vec
+    int tid = 0;
+    if(isInnerDiscipline) {
+        tid = 1;
+    }
+    Vec temperature;
+    PetscScalar * t;
+    int nofRows,nofCols;
+    MatGetLocalSize(m_ellipticLinearSystem.getEllipticOperatorMatrix(),&nofRows,&nofCols);
+    VecCreateMPI(disciplineMesh->getCommunicator(), nofRows, PETSC_DETERMINE, &temperature);
+    VecGetArray(temperature,&t);
+    for(const auto & cell : disciplineMesh->getCells()) {
+        if(cell.isInterior()) {
+            long cellId = cell.getId();
+            long cellConsecutiveId = disciplineNumberingInfo.getCellConsecutiveId(cellId);
+            long cellLocalConsecutiveId = cellConsecutiveId - disciplineNumberingInfo.getCellGlobalCountOffset();
+
+            //t[cellLocalConsecutiveId] = disciplineData.at(cellId,tid);
+
+        }
+
+    }
+    VecRestoreArray(temperature,&t);
+    VecAssemblyBegin(temperature);
+    VecAssemblyEnd(temperature);
+
+    //Compute elliptic operator derivative wrt control
+    Mat ellipticOperatorControlDerivative;
+    MatDuplicate(m_ellipticLinearSystem.getEllipticOperatorMatrix(),MAT_COPY_VALUES,&ellipticOperatorControlDerivative);
+    MatScale(ellipticOperatorControlDerivative,1.0 / radius);
+
+    //Compute Jacobian as a Vec
+    Vec dAdR_times_T;
+    VecDuplicate(temperature,&dAdR_times_T);
+    MatMult(ellipticOperatorControlDerivative,temperature,dAdR_times_T);
+    Vec ellipticInverse_times_dAdR_times_T;
+    VecDuplicate(temperature,&ellipticInverse_times_dAdR_times_T);
+    MatMult(m_EllipticOperatorInverse,dAdR_times_T,ellipticInverse_times_dAdR_times_T);
+    VecScale(ellipticInverse_times_dAdR_times_T,-1.0);
+
+    Vec controlJacobian;
+    MatGetLocalSize(m_DisciplineToNeutralInterpolatorJacobian,&nofRows,&nofCols);
+    VecCreateMPI(disciplineMesh->getCommunicator(), nofRows, PETSC_DETERMINE, &controlJacobian);
+    MatMult(m_DisciplineToNeutralInterpolatorJacobian,ellipticInverse_times_dAdR_times_T,controlJacobian);
+
+    MatCreateDense(m_comm,nofRows,PETSC_DECIDE,PETSC_DECIDE,1,NULL,&m_OutputControlJacobian);
+    MatGetSize(m_OutputControlJacobian,&nofRows,&nofCols);
+
+    VecDestroy(&temperature);
+    VecDestroy(&dAdR_times_T);
+    VecDestroy(&ellipticInverse_times_dAdR_times_T);
+    MatDestroy(&ellipticOperatorControlDerivative);
+}
+
 
 StencilScalarSolverHandler::StencilScalarSolverHandler(const std::string & prefix, bool debug) : StencilScalarSolver(prefix,debug) {
 }

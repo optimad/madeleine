@@ -312,6 +312,8 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     getJacobianManager()->computeEllipticOperatorInverse(m_scaledDisciplineMesh.get(),m_disciplineNumberingInfo);
     getJacobianManager()->computeOutputInputJacobian(m_comm,m_emissivity,m_innerSphere);
+    getJacobianManager()->computeOutputControlJacobian(m_comm, m_emissivity, m_innerSphere, m_disciplineRadius,
+            m_disciplineData, m_scaledDisciplineMesh.get(), m_disciplineNumberingInfo);
 };
 
 /*!

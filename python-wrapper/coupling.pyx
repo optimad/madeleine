@@ -14,7 +14,7 @@ cdef extern from "coupling.hpp" namespace "coupling":
     cdef cppclass MeshCoupling:
         MeshCoupling(string, MPI_Comm) except +
         MeshCoupling(vector[string], vector[string], string, MPI_Comm) except +
-        void initialize(string, string, double, double, double, bool, double, vector[double], vector[int], int) except +
+        void initialize(string, string, double, double, double, bool, double, vector[double], double, double, vector[int], int) except +
         void compute(double * arr, size_t arrSize, double, double)
         void close()
         const SurfUnstructured * getNeutralMesh()
@@ -53,7 +53,8 @@ cdef class Py_MeshCoupling:
         del self.thisptr
 
     def initialize(self, unitDisciplineMeshFile, unitNeutralMeshFile, sphereRadius, sphereNeutralRadius,
-    sphereThickness, innerSphere, sourceIntensity, sourceDirection, cellIndicesPerRank, kernel):
+    sphereThickness, innerSphere, sourceIntensity, sourceDirection, thermalDiffusivityCoefficient,
+     emissivity, cellIndicesPerRank, kernel):
 #        cdef vector[double] sDirection
 #        sDirection.push_back(sourceDirection[0])
 #        sDirection.push_back(sourceDirection[1])
@@ -66,6 +67,8 @@ cdef class Py_MeshCoupling:
                                 < bool > innerSphere,
                                 < double > sourceIntensity,
                                 < const vector[double] & > sourceDirection,
+                                < double > thermalDiffusivityCoefficient,
+                                < double > emissivity,
                                 < const vector[int] & > cellIndicesPerRank,
                                 < int > kernel)
 

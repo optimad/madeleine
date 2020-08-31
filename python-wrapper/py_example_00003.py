@@ -12,7 +12,10 @@ cellIndicesPerRank = coupling.Py_computeMeshFilePartitioning(neutralFile,comm)
 print(cellIndicesPerRank)
 sourceDirection = [1.0, 0.0, 0.0]
 npSourceDirection = np.asarray(sourceDirection)
-mc.initialize(disciplineFile, neutralFile, 2.0, 2.0, 1.0, False, 1.0, npSourceDirection, cellIndicesPerRank,0)
+thermalDiffusivityCoefficient = 0.001
+emissivity = 0.001
+mc.initialize(disciplineFile, neutralFile, 2.0, 2.0, 1.0, False, 1.0, npSourceDirection, thermalDiffusivityCoefficient,
+              emissivity, cellIndicesPerRank, 0)
 nofNeutralElements=mc.getNeutralMeshSize()
 arr=np.ones(nofNeutralElements)
 arr=arr * 274.0

@@ -37,7 +37,8 @@ public:
             SurfUnstructured * neutralMesh, PatchNumberingInfo * neutralNumberingInfo);
     void computeOutputInputJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline);
     void computeOutputControlJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline, double radius,
-            const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo);
+            const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo,
+            const SurfUnstructured * neutralMesh, const PatchNumberingInfo & neutralNumberingInfo);
     Mat & getNeutralToDisciplineInterpolatorJacobian();
     Mat & getDisciplineToNeutralInterpolatorJacobian();
     Mat & getOuputInputJacobian();

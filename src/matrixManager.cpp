@@ -175,7 +175,8 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
 }
 
 void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline, double radius,
-        const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo) {
+        const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo,
+        const SurfUnstructured * neutralMesh, const PatchNumberingInfo & neutralNumberingInfo) {
 
     //Set temperature in a Vec
     int tid = 0;
@@ -223,12 +224,25 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
     MatMult(m_DisciplineToNeutralInterpolatorJacobian,ellipticInverse_times_dAdR_times_T,controlJacobian);
 
     MatCreateDense(m_comm,nofRows,PETSC_DECIDE,PETSC_DECIDE,1,NULL,&m_OutputControlJacobian);
-    MatGetSize(m_OutputControlJacobian,&nofRows,&nofCols);
+    MatGetLocalSize(m_OutputControlJacobian,&nofRows,&nofCols);
+
+    const double *values;
+    VecGetArrayRead(controlJacobian,&values);
+    for(int i = 0; i < nofRows; ++i) {
+        long cellId = neutralMesh->getCells().rawFind(i).getId();
+        long cellGlobalId = neutralNumberingInfo.getCellConsecutiveId(cellId);
+        MatSetValue(m_OutputControlJacobian,cellGlobalId,0,values[i],INSERT_VALUES);
+
+    }
+    VecRestoreArrayRead(controlJacobian,&values);
+    MatAssemblyBegin(m_OutputControlJacobian,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(m_OutputControlJacobian,MAT_FINAL_ASSEMBLY);
 
     VecDestroy(&temperature);
     VecDestroy(&dAdR_times_T);
     VecDestroy(&ellipticInverse_times_dAdR_times_T);
     MatDestroy(&ellipticOperatorControlDerivative);
+    VecDestroy(&controlJacobian);
 }
 
 Mat & JacobianMatricesManager::getOuputInputJacobian() {

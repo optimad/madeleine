@@ -19,7 +19,7 @@ cdef extern from "coupling.hpp" namespace "coupling":
         void close()
         const SurfUnstructured * getNeutralMesh()
         size_t getNeutralMeshSize()
-        void computeJacobianRow(long,long,vector[long],vector[double])
+        void extractOutputInputJacobianRow(int,int,vector[int],vector[double])
         long getNeutralFirstCellId()
         long getNeutralGlobalConsecutiveId(long)
 
@@ -89,11 +89,11 @@ cdef class Py_MeshCoupling:
     def getNeutralMeshSize(self):
         return ( < MeshCoupling*> < void*>self.thisptr)[0].getNeutralMeshSize()
 
-    def computeJacobianRow(self,long cellId):
+    def extractOutputInputJacobianRow(self,int cellId):
         cdef vector[long] columnIds
-        cdef long cellGlobalId = 0
+        cdef int cellGlobalId = 0
         cdef vector[double] columnValues
-        self.thisptr.computeJacobianRow(cellId,<long&> cellGlobalId,<vector[long]&> columnIds, <vector[double]&> columnValues)
+        self.thisptr.extractOutputInputJacobianRow(cellId,<int&> cellGlobalId,<vector[int]&> columnIds, <vector[double]&> columnValues)
         retIds = np.asarray(columnIds,dtype=np.int32)
         retValues = np.asarray(columnValues,dtype=np.float64)
         return cellGlobalId,retIds,retValues

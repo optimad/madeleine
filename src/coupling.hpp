@@ -61,7 +61,8 @@ public:
     long getNeutralFirstCellId();
     long getNeutralGlobalConsecutiveId(long id);
     void close();
-    void computeJacobianRow(long index, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues);
+    void extractOutputInputJacobianRow(int index, int & cellGlobalId, std::vector<int> & columnIds, std::vector<double> & columnValues);
+    void extractOutputControlJacobianRow(int index, int & cellGlobalId, std::vector<int> & columnIds, std::vector<double> & columnValues);
     JacobianMatricesManager* getJacobianManager();
 
 private:

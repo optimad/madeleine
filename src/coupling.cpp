@@ -1209,13 +1209,13 @@ void MeshCoupling::disciplineKernel2() {
 }
 
 /*!
-    Compute row elements of the Jacobian Matrix to be passed to PETSc4Py
+    Extract row elements of the Output Input Jacobian Matrix to be passed to PETSc4Py
     \param[in] index it is the cell order number from GEMS. ATTENTION: IT IS MANDATORY THAT PARTITIONED MESHES ARE SQUEEZED!!!!
     \param[out] cellGlobalId a global consecutive id to be used in PETSc
     \param[out] columnIds a vector long containing the indices of non-zero elements in the matrix row relative to cellGlobalId
     \param[out] columnValues a vector double containing the values of non-zero elements in the matrix row relative to cellGlobalId
 */
-void MeshCoupling::computeJacobianRow(long index, long & cellGlobalId, std::vector<long> & columnIds, std::vector<double> & columnValues) {
+void MeshCoupling::extractOutputInputJacobianRow(int index, int & cellGlobalId, std::vector<int> & columnIds, std::vector<double> & columnValues) {
 
 
     columnIds.clear();
@@ -1224,19 +1224,54 @@ void MeshCoupling::computeJacobianRow(long index, long & cellGlobalId, std::vect
     long cellId = m_scaledNeutralMesh->getCells().rawFind(index).getId();
     cellGlobalId = getNeutralGlobalConsecutiveId(cellId);
 
-    //Fake Jacobian line to be modified - at the moment matrix row element values correspond to cell global indices
-    std::vector<long> neighs;
-    m_scaledNeutralMesh->findCellNeighs(cellId,&neighs);
-    columnIds.reserve(neighs.size());
-    columnValues.reserve(neighs.size());
-    for(long & neigh : neighs) {
-        long globalNeigh = m_neutralNumberingInfo.getCellConsecutiveId(neigh);
-        columnIds.push_back(globalNeigh);
-        columnValues.push_back(globalNeigh);
-    }
+    int ncols;
+    const int *cols;
+    const double *values;
 
+    MatGetRow(getJacobianManager()->getOuputInputJacobian(), int(cellGlobalId), &ncols, &cols, &values);
+
+    columnIds.resize(ncols);
+    columnValues.resize(ncols);
+    std::copy(cols,cols + ncols,columnIds.begin());
+    std::copy(values,values + ncols,columnValues.begin());
+
+    PetscFree(cols);
+    PetscFree(values);
 
 }
+
+/*!
+    Extract row elements of the Output Control Jacobian Matrix to be passed to PETSc4Py
+    \param[in] index it is the cell order number from GEMS. ATTENTION: IT IS MANDATORY THAT PARTITIONED MESHES ARE SQUEEZED!!!!
+    \param[out] cellGlobalId a global consecutive id to be used in PETSc
+    \param[out] columnIds a vector long containing the indices of non-zero elements in the matrix row relative to cellGlobalId
+    \param[out] columnValues a vector double containing the values of non-zero elements in the matrix row relative to cellGlobalId
+*/
+void MeshCoupling::extractOutputControlJacobianRow(int index, int & cellGlobalId, std::vector<int> & columnIds, std::vector<double> & columnValues) {
+
+
+    columnIds.clear();
+    columnValues.clear();
+    //Access cell id from raw iterator of PiercedVector using ordered local index from Python
+    long cellId = m_scaledNeutralMesh->getCells().rawFind(index).getId();
+    cellGlobalId = getNeutralGlobalConsecutiveId(cellId);
+
+    int ncols;
+    const int *cols;
+    const double *values;
+
+    MatGetRow(getJacobianManager()->getOuputControlJacobian(), int(cellGlobalId), &ncols, &cols, &values);
+
+    columnIds.resize(ncols);
+    columnValues.resize(ncols);
+    std::copy(cols,cols + ncols,columnIds.begin());
+    std::copy(values,values + ncols,columnValues.begin());
+
+    PetscFree(cols);
+    PetscFree(values);
+
+}
+
 
 /*!
     Get the information structure on neutral mesh elements numbering

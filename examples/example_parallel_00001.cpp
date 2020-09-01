@@ -128,6 +128,14 @@ void test00001( int argc, char *argv[] ) {
         std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),initialTemperature); //Flux for inner, Temperature for outer DEBUG=rank
         parallelToyDiscipline1.compute(neutralData.data(),neutralData.size(),radius,radius);
 
+        int globalRowId;
+        std::vector<int> cols;
+        std::vector<double> values;
+        for(int i = 0; i < parallelToyDiscipline1.getNeutralMesh()->getInternalCount(); ++i) {
+            parallelToyDiscipline1.extractOutputInputJacobianRow(i, globalRowId, cols, values);
+            parallelToyDiscipline1.extractOutputControlJacobianRow(i, globalRowId, cols, values);
+        }
+
         //
         //    parallelToyDiscipline.close();
     }

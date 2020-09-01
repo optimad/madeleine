@@ -40,7 +40,8 @@ public:
             const PiercedStorage<double,long> & disciplineData, const SurfUnstructured * disciplineMesh, const PatchNumberingInfo & disciplineNumberingInfo);
     Mat & getNeutralToDisciplineInterpolatorJacobian();
     Mat & getDisciplineToNeutralInterpolatorJacobian();
-    Mat & getEllipticOperatorJacobian();
+    Mat & getOuputInputJacobian();
+    Mat & getOuputControlJacobian();
 };
 
 #endif

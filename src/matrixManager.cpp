@@ -231,6 +231,13 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
     MatDestroy(&ellipticOperatorControlDerivative);
 }
 
+Mat & JacobianMatricesManager::getOuputInputJacobian() {
+    return m_OutputInputJacobian;
+}
+
+Mat & JacobianMatricesManager::getOuputControlJacobian() {
+    return m_OutputControlJacobian;
+}
 
 StencilScalarSolverHandler::StencilScalarSolverHandler(const std::string & prefix, bool debug) : StencilScalarSolver(prefix,debug) {
 }

@@ -45,12 +45,12 @@ public:
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereRadius, double sphereNeutralRadius,
             double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
-            double thermalDiffusivityCoefficient, double emissivity,
+            double thermalDiffusivityCoefficient, double emissivity, double infinityTemperature,
             const std::vector<int> & globalNeutralId2MeshFileRank, int kernel);
     void initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
             double sphereDisciplineRadius, double sphereNeutralRadius,
             double sphereThickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
-            double thermalDiffusivityCoefficient, double emissivity,
+            double thermalDiffusivityCoefficient, double emissivity, double infinityTemperature,
             const std::vector<int> & globalNeutralId2MeshFileRank);
     void compute(double *neutralInputArray, std::size_t size, double newRadius, double otherRadius);
     const std::vector<std::string> & getInputDataNames();
@@ -124,6 +124,7 @@ private:
     std::array<double,3> m_sourceDirection;
     double m_thermalDiffusivityCoefficient; //linear radius dependency
     double m_emissivity;
+    double m_infinityTemperature;
 
     void scaleMeshToRadius(std::unique_ptr<SurfUnstructured> & mesh, double & oldRadius, const double & newRadius);
 
@@ -175,8 +176,8 @@ private:
 #endif
 
     //field access indices
-    const int fid_temperature;
-    const int fid_flux;
+    const int m_fid_temperatureIN;
+    const int m_fid_temperatureOUT;
     int m_inputField;
     int m_outputField;
 };

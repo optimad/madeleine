@@ -26,7 +26,7 @@ namespace coupling{
 MeshCoupling::MeshCoupling(std::string disciplineName, MPI_Comm comm) :
         m_unitDisciplineMesh(new SurfUnstructured(2,3)), m_unitNeutralMesh(new SurfUnstructured(2,3)),
         m_disciplineData(2), m_neutralData(2),
-        fid_temperature(0), fid_flux(1),
+        m_fid_temperatureIN(0), m_fid_temperatureOUT(1),
         m_disciplineRadius(1.0), m_oldDisciplineRadius(1.0), m_neutralRadius(1.0), m_oldNeutralRadius(1.0),
         m_name(disciplineName), m_system(nullptr), m_thickness(1.0), m_innerSphere(true), m_sourceMaxIntensity(0.0),
         m_sourceDirection({{1.0,0.0,0.0}})
@@ -104,11 +104,11 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
         double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
-        double thermalDiffusivityCoefficient, double emissivity,
+        double thermalDiffusivityCoefficient, double emissivity, double infinityTemperature,
         const std::vector<int> & globalNeutralId2MeshFileRank){
     int kernel = 1;
     initialize(unitDisciplineMeshFile, unitNeutralMeshFile, disciplineRadius, neutralRadius, thickness, innerSphere, sourceIntensity, sourceDirection,
-            thermalDiffusivityCoefficient, emissivity,
+            thermalDiffusivityCoefficient, emissivity, infinityTemperature,
             globalNeutralId2MeshFileRank, kernel);
 }
 
@@ -125,7 +125,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 */
 void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const std::string & unitNeutralMeshFile,
         double disciplineRadius, double neutralRadius, double thickness, bool innerSphere, double sourceIntensity, std::vector<double> sourceDirection,
-        double thermalDiffusivityCoefficient, double emissivity,
+        double thermalDiffusivityCoefficient, double emissivity, double infinityTemperature,
         const std::vector<int> & globalNeutralId2MeshFileRank, int kernel){
 
     //initialize radius
@@ -136,6 +136,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
     m_sourceMaxIntensity = sourceIntensity;
     m_thermalDiffusivityCoefficient = thermalDiffusivityCoefficient;
     m_emissivity = emissivity;
+    m_infinityTemperature = infinityTemperature;
 
     assert(sourceDirection.size() >= 3);
     for(int i = 0; i < 3; ++i) {
@@ -178,7 +179,7 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     //Initialize data container
     synchronizeMeshData();
-    uniformlyInitAllData(0.0);
+    uniformlyInitAllData(294.0);
     //Set mesh VTK writer
     //ATTENTION from here on scaled meshes are written with attached data, therefore data container have to be coherent with the relative mesh
     prepareWritingData();
@@ -194,15 +195,10 @@ void MeshCoupling::initialize(const std::string & unitDisciplineMeshFile, const 
 
     //Prepare discipline
     //set Input/Output field access indices to be interpolated from/to neutral
-    //If inner sphere then input is flux
-    //If outer spehere then input is temperature
-    if(m_innerSphere) {
-        m_inputField = fid_flux;
-        m_outputField = fid_temperature;
-    } else {
-        m_inputField = fid_temperature;
-        m_outputField = fid_flux;
-    }
+    //Both discipline take temperature as input as give temperature as output
+    m_inputField = m_fid_temperatureIN;
+    m_outputField = m_fid_temperatureOUT;
+
     //Prepare Linear System
     //Matrix preallocation assembly
     m_helmoltzStencils.resize(getDisciplineMesh()->getInternalCount());
@@ -1034,25 +1030,25 @@ void MeshCoupling::uniformlyInitAllData(double value) {
     m_neutralData.fill(value);
     m_disciplineData.fill(value);
 
-    //DEBUG
-    double neutralValues[2];
-//    neutralValues[fid_temperature] = double(m_rank); neutralValues[fid_flux] = double(10 + m_rank);
-    neutralValues[fid_temperature] = 274.0; neutralValues[fid_flux] = 0.0;
-    double disciplineValues[2];
-    disciplineValues[fid_temperature] = 274.0; disciplineValues[fid_flux] = 0.0;
-
-    for(const auto & cell : m_scaledNeutralMesh->getCells()) {
-        long id = cell.getId();
-        m_neutralData.set(id,2,0,neutralValues);
-    }
-    for(const auto & cell : m_scaledDisciplineMesh->getCells()) {
-        long id = cell.getId();
-        m_disciplineData.set(id,2,0,disciplineValues);
-//        m_disciplineData.set(id,fid_temperature,double(m_rank+40));
-//        m_disciplineData.set(id,fid_flux,double(m_rank+30));
-    }
-
-    //DEBUG
+//    //DEBUG
+//    double neutralValues[2];
+////    neutralValues[fid_temperature] = double(m_rank); neutralValues[fid_flux] = double(10 + m_rank);
+//    neutralValues[m_fid_temperatureIN] = 274.0; neutralValues[m_fid_temperatureOUT] = 274.0;
+//    double disciplineValues[2];
+//    disciplineValues[m_fid_temperatureIN] = 274.0; disciplineValues[m_fid_temperatureOUT] = 274.0;
+//
+//    for(const auto & cell : m_scaledNeutralMesh->getCells()) {
+//        long id = cell.getId();
+//        m_neutralData.set(id,2,0,neutralValues);
+//    }
+//    for(const auto & cell : m_scaledDisciplineMesh->getCells()) {
+//        long id = cell.getId();
+//        m_disciplineData.set(id,2,0,disciplineValues);
+////        m_disciplineData.set(id,fid_temperature,double(m_rank+40));
+////        m_disciplineData.set(id,fid_flux,double(m_rank+30));
+//    }
+//
+//    //DEBUG
 }
 
 /*!

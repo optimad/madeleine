@@ -112,10 +112,11 @@ void test00001( int argc, char *argv[] ) {
         sourceDirection[0] = 1.0;
         double thermalDiffusivityCoefficient = 0.001;
         double emissivity = 0.001;
+        double infinityTemperature = 274.0;
 
         parallelToyDiscipline1.initialize(disciplineFilemesh,neutralFilemesh,
                 radius,radius,thickness,isInnerSphere,sourceIntensity,sourceDirection,
-                thermalDiffusivityCoefficient, emissivity,
+                thermalDiffusivityCoefficient, emissivity, infinityTemperature,
                 cellIndicesPerRank);
         //
         //    PiercedVector<double> neutralData;

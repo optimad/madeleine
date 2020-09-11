@@ -1296,9 +1296,7 @@ void MeshCoupling::assemblySimplifiedDiscreteHelmholtzSystem() {
 
     //Compute Stencils
     computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
-    if(!m_innerSphere) {
-        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
-    }
+    computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
 
     //Assembly matrix and linear system
     KSPOptions &solverOptions = m_system->getKSPOptions();
@@ -1316,9 +1314,7 @@ void MeshCoupling::updateSimplifiedDiscreteHelmholtzSystem() {
 
     //Compute Stencils
     computeSimplifiedDiscreteLaplaceStencils(m_helmoltzStencils);
-    if(!m_innerSphere) {
-        computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
-    }
+    computeHelmholtzStencilsFromLaplaceStencils(m_helmoltzStencils, m_emissivity);
 
     //update matrix
     //m_system->update(m_rowIds,m_helmoltzStencils);

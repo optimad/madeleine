@@ -1500,9 +1500,9 @@ void MeshCoupling::updateOutputField() {
                 long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
                 assert(cellLocalConsecutiveId < nLocalRow);
 
-                double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * m_emissivity;
-                m_disciplineData.set(cellId,m_outputField,outputValue);
-                m_disciplineData.set(cellId,m_inputField,solution[cellLocalConsecutiveId]);
+                //double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * m_emissivity;
+                m_disciplineData.set(cellId,m_outputField,solution[cellLocalConsecutiveId]);
+                //m_disciplineData.set(cellId,m_inputField,solution[cellLocalConsecutiveId]);
             }
         }
     }

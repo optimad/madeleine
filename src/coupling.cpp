@@ -1384,17 +1384,17 @@ void MeshCoupling::computeSimplifiedDiscreteLaplaceStencils(std::vector<StencilS
 */
 void MeshCoupling::computeHelmholtzStencilsFromLaplaceStencils(std::vector<StencilScalar> & helmoltzStencils, const double & coefficient) {
 
+    double emissivityMultiplier = 2.0;
+    if(m_innerSphere) {
+        emissivityMultiplier = 1.0;
+    }
     for (const Cell & cell : m_scaledDisciplineMesh->getCells()) {
         if(cell.isInterior()) {
             long cellId = cell.getId();
             long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
             long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
             StencilScalar & stencil = helmoltzStencils[cellLocalConsecutiveId];
-            stencil.sumItem(cellConsecutiveId,coefficient);//global consecutive is mandatory because the stencil has been renumbered
-//            if(m_scaledDisciplineMesh->getRank() == 1) {
-//                std::cout << "local consecutive ID " << cellLocalConsecutiveId << " - " << cellConsecutiveId << " - " << cellId << std::endl;
-//                stencil.display(std::cout);
-//            }
+            stencil.sumItem(cellConsecutiveId,emissivityMultiplier * coefficient);//global consecutive is mandatory because the stencil has been renumbered
         }
     }
 }

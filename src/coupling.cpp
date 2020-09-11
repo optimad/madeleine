@@ -1416,7 +1416,7 @@ void MeshCoupling::updateSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 rhs[cellLocalConsecutiveId] = 0.0;
-                rhs[cellLocalConsecutiveId] = m_disciplineData.at(cellId,m_inputField); //here -J~_io = J~_oi; outer discipline passes J~_oi = epsilon*(T_o-T~_i)
+                rhs[cellLocalConsecutiveId] = m_disciplineData.at(cellId,m_emissivity * m_inputField); // emissivity * Temp_from_outer_discipline
             }
         }
     } else {
@@ -1428,7 +1428,8 @@ void MeshCoupling::updateSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 std::array<double,3> cellNormal = m_scaledDisciplineMesh->evalFacetNormal(cellId);
-                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal) + m_emissivity * m_disciplineData.at(cellId,m_inputField);
+                rhs[cellLocalConsecutiveId] = evalSourceIntensity(cellNormal) + m_emissivity * m_disciplineData.at(cellId,m_inputField)
+                        + m_emissivity * m_infinityTemperature; // source + emissivity * Temp_from_inner_discipline + emissivity * Temp_from_infinity
             }
         }
     }

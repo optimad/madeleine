@@ -1416,7 +1416,7 @@ void MeshCoupling::updateSystemRHS() {
                 assert(cellLocalConsecutiveId < nLocalRow);
 
                 rhs[cellLocalConsecutiveId] = 0.0;
-                rhs[cellLocalConsecutiveId] = m_disciplineData.at(cellId,m_emissivity * m_inputField); // emissivity * Temp_from_outer_discipline
+                rhs[cellLocalConsecutiveId] = m_emissivity * m_disciplineData.at(cellId,m_inputField); // emissivity * Temp_from_outer_discipline
             }
         }
     } else {

@@ -1481,29 +1481,14 @@ void MeshCoupling::updateOutputField() {
 
     long nLocalRow = m_system->getRowCount();
     const double *solution = m_system->getSolutionRawReadPtr();
-    if(m_innerSphere) {
-        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
-            if(cell.isInterior()) {
-                long cellId = cell.getId();
-                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
-                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
-                assert(cellLocalConsecutiveId < nLocalRow);
+    for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
+        if(cell.isInterior()) {
+            long cellId = cell.getId();
+            long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
+            long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
+            assert(cellLocalConsecutiveId < nLocalRow);
 
-                m_disciplineData.set(cellId,m_outputField,solution[cellLocalConsecutiveId]);
-            }
-        }
-    } else {
-        for(const Cell & cell : m_scaledDisciplineMesh->getCells()) {
-            if(cell.isInterior()) {
-                long cellId = cell.getId();
-                long cellConsecutiveId = m_disciplineNumberingInfo.getCellConsecutiveId(cellId);
-                long cellLocalConsecutiveId = cellConsecutiveId - m_disciplineNumberingInfo.getCellGlobalCountOffset();
-                assert(cellLocalConsecutiveId < nLocalRow);
-
-                //double outputValue = ( solution[cellLocalConsecutiveId] - m_disciplineData.at(cellId,m_inputField) ) * m_emissivity;
-                m_disciplineData.set(cellId,m_outputField,solution[cellLocalConsecutiveId]);
-                //m_disciplineData.set(cellId,m_inputField,solution[cellLocalConsecutiveId]);
-            }
+            m_disciplineData.set(cellId,m_outputField,solution[cellLocalConsecutiveId]);
         }
     }
     m_system->restoreSolutionRawReadPtr(solution);

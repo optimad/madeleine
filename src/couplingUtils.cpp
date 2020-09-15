@@ -846,7 +846,7 @@ void FieldStreamer::flushData(std::fstream &stream, const std::string & name, VT
     int fieldIndex;
     for(const std::string & fieldName : m_fieldNames) {
         if(name == fieldName) {
-            if( name.find("temperature") != std::string::npos || name.find("Temperature") != std::string::npos ) {
+            if( name.find("in") != std::string::npos || name.find("IN") != std::string::npos ) {
                 fieldIndex = 0;
             } else {
                 fieldIndex = 1;

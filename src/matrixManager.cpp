@@ -111,16 +111,32 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
         MatMatMult(m_EllipticOperatorInverse,m_NeutralToDisciplineInterpolatorJacobian,
                 MAT_INITIAL_MATRIX,PETSC_DEFAULT,&EmND_T);
         MatTranspose(EmND_T,MAT_INPLACE_MATRIX,&EmND_T);
+
+        //build emissivity identity
+        int nofRows,nofCols;
+        Mat emissivityIdentity;
+        MatGetLocalSize(m_EllipticOperatorInverse,&nofRows,&nofCols);
+        MatCreateAIJ(comm,nofRows,nofRows,PETSC_DETERMINE,PETSC_DETERMINE,1,PETSC_NULL,0,PETSC_NULL,&emissivityIdentity);
+        MatZeroEntries(emissivityIdentity);
+        MatAssemblyBegin(emissivityIdentity,MAT_FINAL_ASSEMBLY);
+        MatAssemblyEnd(emissivityIdentity,MAT_FINAL_ASSEMBLY);
+        MatShift(emissivityIdentity,emissivity);
+
+        Mat emiss_EmND;
+        MatMatMult(EmND_T,emissivityIdentity,
+                       MAT_INITIAL_MATRIX,PETSC_DEFAULT,&emiss_EmND);
         Mat DN_T;
         MatTranspose(m_DisciplineToNeutralInterpolatorJacobian,MAT_INITIAL_MATRIX,&DN_T);
         MatReuse matReuse = MAT_INITIAL_MATRIX;
         if(m_reuseJacobianMatrix) {
             matReuse = MAT_REUSE_MATRIX;
         }
-        MatMatMult(EmND_T,DN_T,matReuse,PETSC_DEFAULT,&m_OutputInputJacobian);
+        MatMatMult(emiss_EmND,DN_T,matReuse,PETSC_DEFAULT,&m_OutputInputJacobian);
         m_reuseJacobianMatrix = true;
         MatTranspose(m_OutputInputJacobian,MAT_INPLACE_MATRIX,&m_OutputInputJacobian);
 
+        MatDestroy(&emissivityIdentity);
+        MatDestroy(&emiss_EmND);
         MatDestroy(&EmND_T);
         MatDestroy(&DN_T);
     } else {
@@ -128,11 +144,10 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
         Mat emissivityIdentityNeutral;
         Mat E_emissivityIdentity;
         Mat E_emissivityIdentity_ND_T;
-        Mat emissivityDN_T;
+        Mat DN_T;
 
-        MatDuplicate(m_DisciplineToNeutralInterpolatorJacobian,MAT_COPY_VALUES,&emissivityDN_T);
-        MatScale(emissivityDN_T,emissivity);
-        MatTranspose(emissivityDN_T,MAT_INPLACE_MATRIX,&emissivityDN_T);
+        MatDuplicate(m_DisciplineToNeutralInterpolatorJacobian,MAT_COPY_VALUES,&DN_T);
+        MatTranspose(DN_T,MAT_INPLACE_MATRIX,&DN_T);
 
         //build emissivity identity
         int nofRows,nofCols;
@@ -152,22 +167,14 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
         if(m_reuseJacobianMatrix) {
             matReuse = MAT_REUSE_MATRIX;
         }
-        MatMatMult(E_emissivityIdentity_ND_T,emissivityDN_T,matReuse,PETSC_DEFAULT,&m_OutputInputJacobian);
+        MatMatMult(E_emissivityIdentity_ND_T,DN_T,matReuse,PETSC_DEFAULT,&m_OutputInputJacobian);
         m_reuseJacobianMatrix = true;
         MatTranspose(m_OutputInputJacobian,MAT_INPLACE_MATRIX,&m_OutputInputJacobian);
-
-        MatGetLocalSize(m_OutputInputJacobian,&nofRows,&nofCols);
-        MatCreateAIJ(comm,nofRows,nofRows,PETSC_DETERMINE,PETSC_DETERMINE,1,PETSC_NULL,0,PETSC_NULL,&emissivityIdentityNeutral);
-        MatZeroEntries(emissivityIdentityNeutral);
-        MatAssemblyBegin(emissivityIdentityNeutral,MAT_FINAL_ASSEMBLY);
-        MatAssemblyEnd(emissivityIdentityNeutral,MAT_FINAL_ASSEMBLY);
-        MatShift(emissivityIdentityNeutral,emissivity);
-        MatAXPY(m_OutputInputJacobian,-1.0,emissivityIdentityNeutral,SUBSET_NONZERO_PATTERN);
 
         MatDestroy(&emissivityIdentity);
         MatDestroy(&E_emissivityIdentity);
         MatDestroy(&E_emissivityIdentity_ND_T);
-        MatDestroy(&emissivityDN_T);
+        MatDestroy(&DN_T);
         MatDestroy(&emissivityIdentityNeutral);
     }
 

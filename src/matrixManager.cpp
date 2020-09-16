@@ -106,6 +106,8 @@ void JacobianMatricesManager::computeInterpolationMatrices(SurfUnstructured * di
 */
 void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double emissivity, bool isInnerDiscipline) {
 
+    log::cout() << "Compute Output/Input Jacobian." << std::endl;
+
     if(isInnerDiscipline) {
         Mat EmND_T;
         MatMatMult(m_EllipticOperatorInverse,m_NeutralToDisciplineInterpolatorJacobian,
@@ -171,12 +173,12 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
         m_reuseJacobianMatrix = true;
         MatTranspose(m_OutputInputJacobian,MAT_INPLACE_MATRIX,&m_OutputInputJacobian);
 
+        MatDestroy(&DN_T);
         MatDestroy(&emissivityIdentity);
         MatDestroy(&E_emissivityIdentity);
         MatDestroy(&E_emissivityIdentity_ND_T);
-        MatDestroy(&DN_T);
-        MatDestroy(&emissivityIdentityNeutral);
     }
+    log::cout() << "Output/Input Jacobian computed." << std::endl;
 
 
 }

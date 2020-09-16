@@ -14,8 +14,9 @@ sourceDirection = [1.0, 0.0, 0.0]
 npSourceDirection = np.asarray(sourceDirection)
 thermalDiffusivityCoefficient = 0.001
 emissivity = 0.001
-mc.initialize(disciplineFile, neutralFile, 2.0, 2.0, 1.0, False, 1.0, npSourceDirection, thermalDiffusivityCoefficient,
-              emissivity, cellIndicesPerRank, 0)
+infinityTemperature = 274.0
+mc.initialize(disciplineFile, neutralFile, 2.0, 2.0, 1.0, True, 1.0, npSourceDirection, thermalDiffusivityCoefficient,
+              emissivity, infinityTemperature, cellIndicesPerRank, 0)
 nofNeutralElements=mc.getNeutralMeshSize()
 arr=np.ones(nofNeutralElements)
 arr=arr * 274.0

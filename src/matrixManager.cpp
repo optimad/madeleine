@@ -188,10 +188,7 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
         const SurfUnstructured * neutralMesh, const PatchNumberingInfo & neutralNumberingInfo) {
 
     //Set temperature in a Vec
-    int tid = 0;
-    if(isInnerDiscipline) {
-        tid = 1;
-    }
+    int fid_out_temperature = 1;
     Vec temperature;
     PetscScalar * t;
     int nofRows,nofCols;
@@ -204,7 +201,7 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
             long cellConsecutiveId = disciplineNumberingInfo.getCellConsecutiveId(cellId);
             long cellLocalConsecutiveId = cellConsecutiveId - disciplineNumberingInfo.getCellGlobalCountOffset();
 
-            //t[cellLocalConsecutiveId] = disciplineData.at(cellId,tid);
+            t[cellLocalConsecutiveId] = disciplineData.at(cellId,fid_out_temperature);
 
         }
 
@@ -216,6 +213,22 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
     //Compute elliptic operator derivative wrt control
     Mat ellipticOperatorControlDerivative;
     MatDuplicate(m_ellipticLinearSystem.getEllipticOperatorMatrix(),MAT_COPY_VALUES,&ellipticOperatorControlDerivative);
+    //Remove emissivity term from the elliptic operator diagonal
+    //build emissivity identity
+    Mat emissivityIdentity;
+    double emissivityCoefficient = 1.0;
+    if(!isInnerDiscipline) {
+        emissivityCoefficient = 2.0;
+    }
+    MatGetLocalSize(m_EllipticOperatorInverse,&nofRows,&nofCols);
+    MatCreateAIJ(comm,nofRows,nofRows,PETSC_DETERMINE,PETSC_DETERMINE,1,PETSC_NULL,0,PETSC_NULL,&emissivityIdentity);
+    MatZeroEntries(emissivityIdentity);
+    MatAssemblyBegin(emissivityIdentity,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(emissivityIdentity,MAT_FINAL_ASSEMBLY);
+    MatShift(emissivityIdentity,emissivityCoefficient * emissivity);
+    //Remove emissivity diagonal matrix to get Laplacian operator
+    MatAXPY(ellipticOperatorControlDerivative,-1.0,emissivityIdentity,SUBSET_NONZERO_PATTERN);
+    //Compute derivative of the elliptic operator by dividing by the radius. Thermal conductivity is a linear function of the radius, i.e. coeff*radius
     MatScale(ellipticOperatorControlDerivative,1.0 / radius);
 
     //Compute Jacobian as a Vec

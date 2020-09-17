@@ -122,28 +122,38 @@ class ToySphereDiscipline(MDODiscipline):
         # Initialize Jacobian matrices
         self._init_jacobian(with_zeros=True)
         self.jac[outputs[0]] = {}
-        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm) #Non-preallocated, malloc at each setVelue
-        mat.setUp()
+        # mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,nofNeutralGlobalCells,comm=comm) #Non-preallocated, malloc at each setVelue
+        matInputs = PETSc.Mat().create(comm=comm)
+        matInputs.setSizes(((nofNeutralLocalCells, PETSC_DETERMINE), (nofNeutralLocalCells, PETSC_DETERMINE)))
+        matInputs.setType("dense")
+        matInputs.setUp()
 
         for i in range(nofNeutralLocalCells):
-            rowId,colIds,values = self.mesh_coupling.computeJacobianRow(i)
+            rowId,colIds,values = self.mesh_coupling.extractOutputInputJacobianRow(i)
+            rowIds = [rowId]
+            #CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
+            matInputs.setValues(rowIds,colIds,values, addv=1)
+
+        matInputs.assemblyBegin()
+        matInputs.assemblyEnd()
+        self.jac[outpus[0]][inputs[0]] = matInputs
+        viewer = PETSc.Viewer().createASCII("Jac.dat",mode=1,comm=comm)
+        viewer.view(self.jac[outpus[0]][inputs[0]])
+
+        matControl = PETSc.Mat().create(comm=comm)
+        matControl.setSizes(((nofNeutralLocalCells, PETSC_DETERMINE), (1, 1)))
+        matControl.setType("dense")
+        matControl.setUp()
+
+        for i in range(nofNeutralLocalCells):
+            rowId,colIds,values = self.mesh_coupling.extractOutputControlJacobianRow(i)
             rowIds = [rowId]
             #CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
             mat.setValues(rowIds,colIds,values, addv=1)
 
-        mat.assemblyBegin()
-        mat.assemblyEnd()
-        self.jac[outpus[0]][inputs[0]] = mat
-        viewer = PETSc.Viewer().createASCII("Jac.dat",mode=1,comm=comm)
-        viewer.view(self.jac[outpus[0]][inputs[0]])
-
-        mat = PETSc.Mat().createAIJ(nofNeutralGlobalCells,1,comm=comm)
-        mat.setUp()
-        for i in range(beginId,beginId+nofNeutralLocalCells):
-            mat.setValue(self.mesh_coupling.getNeutralGlobalConsecutiveId(i),0,i, addv=1)
-        mat.assemblyBegin()
-        mat.assemblyEnd()
-        self.jac[outputs[0]]['r'] = mat
+        matControl.assemblyBegin()
+        matControl.assemblyEnd()
+        self.jac[outputs[0]]['r'] = matControl
 
         viewer = PETSc.Viewer().createASCII("RadiusJac.dat",mode=1,comm=comm)
         viewer.view(self.jac[outputs[0]]['r'])

@@ -21,5 +21,7 @@ nofNeutralElements=mc.getNeutralMeshSize()
 arr=np.ones(nofNeutralElements)
 arr=arr * 274.0
 mc.compute(arr,2.0,2.0)
+cellGlobalId,retIds,retValues = mc.extractOutputInputJacobianRow(0)
+#print(retValues.shape)
 print(arr)
 mc.close()

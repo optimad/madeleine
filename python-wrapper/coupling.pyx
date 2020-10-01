@@ -92,7 +92,7 @@ cdef class Py_MeshCoupling:
         return ( < MeshCoupling*> < void*>self.thisptr)[0].getNeutralMeshSize()
 
     def extractOutputInputJacobianRow(self,int cellId):
-        cdef vector[long] columnIds
+        cdef vector[int] columnIds
         cdef int cellGlobalId = 0
         cdef vector[double] columnValues
         self.thisptr.extractOutputInputJacobianRow(cellId,<int&> cellGlobalId,<vector[int]&> columnIds, <vector[double]&> columnValues)

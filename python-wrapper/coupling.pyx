@@ -101,7 +101,7 @@ cdef class Py_MeshCoupling:
         return cellGlobalId,retIds,retValues
 
     def extractOutputControlJacobianRow(self,int cellId):
-        cdef vector[long] columnIds
+        cdef vector[int] columnIds
         cdef int cellGlobalId = 0
         cdef vector[double] columnValues
         self.thisptr.extractOutputControlJacobianRow(cellId,<int&> cellGlobalId,<vector[int]&> columnIds, <vector[double]&> columnValues)

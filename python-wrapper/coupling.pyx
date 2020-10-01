@@ -100,7 +100,7 @@ cdef class Py_MeshCoupling:
         retValues = np.asarray(columnValues,dtype=np.float64)
         return cellGlobalId,retIds,retValues
 
-    def extractOutputInputJacobianRow(self,int cellId):
+    def extractOutputControlJacobianRow(self,int cellId):
         cdef vector[long] columnIds
         cdef int cellGlobalId = 0
         cdef vector[double] columnValues

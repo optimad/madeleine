@@ -9,7 +9,7 @@
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 
 import unittest
-from numpy import ones
+from numpy import ones, full
 
 from gems_mpi_plugins.core.mpi_manager import MPIManager
 from gems_wrapper import ToySphereDiscipline
@@ -19,38 +19,14 @@ SIZE = COMM.size
 
 
 class TestGEMSWrapper(unittest.TestCase):
-    # def test_inner(self):
-    #     MPIManager().clear(0)
-    #     mesh_file = "../examples/data/unitSphere5.stl"
-    #     neutral_mesh_file = "../examples/data/unitSphere4.stl"
-    #     toy1 = ToySphereDiscipline(
-    #         "Sphere1",
-    #         ["T_in"],
-    #         ["T_out"],
-    #         mesh_file,
-    #         neutral_mesh_file,
-    #         sphere_radius=1.0,
-    #         n_cpus=SIZE,
-    #         kernel=0,
-    #     )
-
-    #     neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
-
-    #     res = toy1.execute({"T_in": ones(neutral_mesh_size)})
-    #     print(res)
-
-    #     toy1._compute_jacobian()
-
-    #     toy1.close()
-
-    def test_outer(self):
+    def test_inner(self):
         MPIManager().clear(0)
         mesh_file = "../examples/data/unitSphere5.stl"
         neutral_mesh_file = "../examples/data/unitSphere4.stl"
         toy1 = ToySphereDiscipline(
             "Sphere1",
-            ["T_out"],
             ["T_in"],
+            ["T_out"],
             mesh_file,
             neutral_mesh_file,
             sphere_radius=1.0,
@@ -60,12 +36,12 @@ class TestGEMSWrapper(unittest.TestCase):
 
         neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
 
-        res = toy1.execute({"T_out": ones(neutral_mesh_size)})
+        res = toy1.execute({"T_in": full(neutral_mesh_size, 300.0)})
         print(res)
 
-        toy1._compute_jacobian()
+        # toy1._compute_jacobian()
 
-        toy1.close()
+        # toy1.close()
 
 
 if __name__ == "__main__":

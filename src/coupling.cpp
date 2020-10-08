@@ -1443,6 +1443,10 @@ double MeshCoupling::evalThermalDiffusivity() {
 
     double thermalDiffusivity = m_thermalDiffusivityCoefficient * m_disciplineRadius;//coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
 
+    if(!m_innerSphere) {
+        thermalDiffusivity *= m_disciplineRadius;
+    }
+
     return thermalDiffusivity;
 }
 

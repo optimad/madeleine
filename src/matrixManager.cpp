@@ -229,7 +229,13 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
     //Remove emissivity diagonal matrix to get Laplacian operator
     MatAXPY(ellipticOperatorControlDerivative,-1.0,emissivityIdentity,SUBSET_NONZERO_PATTERN);
     //Compute derivative of the elliptic operator by dividing by the radius. Thermal conductivity is a linear function of the radius, i.e. coeff*radius
-    MatScale(ellipticOperatorControlDerivative,1.0 / radius);
+    //for the inner discipline and a quadratic function of the radius, i.e. coeff*R^2 for the outer one.
+    //Therefore, the control derivative of the Laplace-Beltrami term, dL(R)/dr = L(R)/R for the inner discipline and dL(R)/dr = 2*L(R)/R for the outer one
+    if(isInnerDiscipline) {
+        MatScale(ellipticOperatorControlDerivative,1.0 / radius);
+    } else {
+        MatScale(ellipticOperatorControlDerivative,2.0 / radius);
+    }
 
     //Compute Jacobian as a Vec
     Vec dAdR_times_T;

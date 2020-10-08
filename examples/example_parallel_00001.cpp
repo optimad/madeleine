@@ -133,10 +133,10 @@ void test00001( int argc, char *argv[] ) {
         std::vector<int> cols;
         std::vector<double> values;
         for(int i = 0; i < parallelToyDiscipline1.getNeutralMesh()->getInternalCount(); ++i) {
-            parallelToyDiscipline1.extractOutputInputJacobianRow(i, globalRowId, cols, values);
-            std::cout << "ncols Input = " << cols.size() << std::endl;
+            //parallelToyDiscipline1.extractOutputInputJacobianRow(i, globalRowId, cols, values);
+            //std::cout << "global row ID = " << globalRowId << " cols = " << cols << " values = " << values << std::endl;
             parallelToyDiscipline1.extractOutputControlJacobianRow(i, globalRowId, cols, values);
-            std::cout << "ncols Control = " << cols.size() << std::endl;
+            std::cout << "global row ID = " << globalRowId << " cols = " << cols << " values = " << values << std::endl;
         }
 
         //

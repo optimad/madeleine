@@ -61,8 +61,6 @@ void test00001( int argc, char *argv[] ) {
     log::cout() << "|=====================================================|" << std::endl;
     log::cout() << std::endl;
 
-//    std::vector<std::string> inputs(1,"Flux"); //for inner sphere (outputs for outer one)
-//    std::vector<std::string> outputs(1,"Temperature"); // for inner sphere (inputs for outer one)
     std::vector<std::string> inputs(1,"TemperatureIN"); //for outer sphere (outputs for outer one)
     std::vector<std::string> outputs(1,"TemperatureOUT"); // for outer sphere (inputs for outer one)
 
@@ -74,6 +72,7 @@ void test00001( int argc, char *argv[] ) {
     //int nofRankInWorkGroup = nProcessors != 1 ? nProcessors - 1 : 1;
     // PetscInitiliaze is called by bitpit mostly to pass custom arguments to petsc. PetscInitialize must be called by all the processes
     // If called from outside, bitpit cannot customize the linear solver using PETSc command-line arguments.
+    // UPDATE: solvers can be customize even if PETSc initialization is called outside bitpit
     // The default solver in bitpit is GMRES with ASM global preconditioner and sub-block ILU preconditioner
     int nofRankInWorkGroup = nProcessors;
     int *ranks = new int[nofRankInWorkGroup];
@@ -126,7 +125,7 @@ void test00001( int argc, char *argv[] ) {
         double initialTemperature = 274.0;
         double initialFlux = 0.274;
 
-        std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),initialTemperature); //Flux for inner, Temperature for outer DEBUG=rank
+        std::vector<double> neutralData(parallelToyDiscipline1.getNeutralMesh()->getInternalCount(),initialTemperature);
         parallelToyDiscipline1.compute(neutralData.data(),neutralData.size(),radius,radius);
 
         int globalRowId;

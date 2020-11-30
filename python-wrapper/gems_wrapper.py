@@ -161,8 +161,7 @@ class ToySphereDiscipline(MDODiscipline):
             rowId, colIds, values = self.mesh_coupling.extractOutputInputJacobianRow(i)
             rowIds = [rowId]
             # CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
-            cols_id = range(48)
-            matInputs.setValues(rowIds, cols_id, values, addv=1)
+            matInputs.setValues(rowIds, colIds, values, addv=1)
 
         matInputs.assemblyBegin()
         matInputs.assemblyEnd()
@@ -182,6 +181,7 @@ class ToySphereDiscipline(MDODiscipline):
             rowIds = [rowId]
             colIds = [1]
             # CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
+            print("Jac r", i, values)
             matControl.setValues(rowIds, colIds, values, addv=1)
 
         matControl.assemblyBegin()

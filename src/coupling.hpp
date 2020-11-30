@@ -123,6 +123,7 @@ private:
     double m_sourceMaxIntensity;
     std::array<double,3> m_sourceDirection;
     double m_thermalDiffusivityCoefficient; //linear radius dependency
+    double m_newRadius;
     double m_emissivity;
     double m_infinityTemperature;
 

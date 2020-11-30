@@ -72,6 +72,8 @@ MeshCoupling::MeshCoupling(std::string disciplineName) :
 
     m_lbCommunicator = std::unique_ptr<DataCommunicator>(new DataCommunicator(m_comm));
 
+    m_newRadius = m_disciplineRadius;
+
 #else
     m_rank = 0;
     m_nprocs = 1;
@@ -234,6 +236,8 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     scaleMeshToRadius(m_scaledDisciplineMesh,m_disciplineRadius,newRadius);
     scaleMeshToRadius(m_scaledNeutralMesh,m_neutralRadius,newRadius);
 
+    m_newRadius = newRadius;
+
     log::cout() << "First Interpolation" << std::endl;
     //sort cells by id - neutalInputArray should have values ordered like the neutral mesh file partitioning
     m_scaledNeutralMesh->sortCells();
@@ -241,7 +245,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     updateInputField(neutralInputArray,size);
 
     std::string name = "initilizedNF";
-    m_scaledNeutralMesh->write(name);
+    /* m_scaledNeutralMesh->write(name); */
 
 
     //Update neutral ghost cell values
@@ -254,7 +258,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData, m_inputField);
 
     name = "intepolatedD_Nf";
-    m_scaledDisciplineMesh->write(name);
+    /* m_scaledDisciplineMesh->write(name); */
 
     //Update discipline ghost cell values
     std::cout << "Updatings discipline ghosts" << std::endl;
@@ -267,7 +271,7 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     updateDisciplineGhosts();
 
     name = "solutionD_Nf";
-    m_scaledDisciplineMesh->write(name);
+    /* m_scaledDisciplineMesh->write(name); */
 
 
 //    name = "Nf";
@@ -281,17 +285,17 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_inputField);
 
     name = "interpolatedSolutionN_{D_Nf}";
-    m_scaledNeutralMesh->write(name);
+    /* m_scaledNeutralMesh->write(name); */
 
     //dynamicPartitionNeutralMeshByNeutralMeshWithData();
 
     name = "unsortedNf";
-    m_scaledNeutralMesh->write(name);
+    /* m_scaledNeutralMesh->write(name); */
 
     m_scaledNeutralMesh->sortCells();
 
     name = "sortedNf";
-    m_scaledNeutralMesh->write(name);
+    /* m_scaledNeutralMesh->write(name); */
 
     //Update C-array to pass data to NUMPY array used by GEMS
     std::size_t counter = 0;
@@ -1440,9 +1444,14 @@ void MeshCoupling::updateSystemRHS() {
     Evaluate diffusivity as function of radius
 */
 double MeshCoupling::evalThermalDiffusivity() {
-
-    double thermalDiffusivity = m_thermalDiffusivityCoefficient * m_disciplineRadius;//coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
-
+    //coeff*m_radius for one discipline, coeff*m_radius^2 for the other one
+    double thermalDiffusivity = 0.;
+    if (m_innerSphere == true){
+	    thermalDiffusivity = m_thermalDiffusivityCoefficient * m_newRadius;
+    }
+    else{
+	    thermalDiffusivity = m_thermalDiffusivityCoefficient * pow(m_newRadius,2);
+    }
     return thermalDiffusivity;
 }
 

@@ -14,8 +14,12 @@ from petsc4py import PETSc
 
 from gems.core.discipline import MDODiscipline
 from gems_mpi_plugins.api import create_execution_context, create_user_partition
+from gems_mpi_plugins.api import configure_logger
 from gems_mpi_plugins.core.mpi_manager import MPIManager
 import coupling
+
+LOGGER = configure_logger("GEMS", "DEBUG")
+
 
 PETSC_DETERMINE = PETSc.DETERMINE
 
@@ -90,6 +94,7 @@ class ToySphereDiscipline(MDODiscipline):
 
         # Init the discipline only if the ranks belong to the discipline
         # subcommunicator
+
         partition.initialize_default_inputs(1.0)
 
         if self.execution_context.is_alive():
@@ -120,6 +125,7 @@ class ToySphereDiscipline(MDODiscipline):
             )
 
     def _run(self):
+        LOGGER.info("Running discipline")
         input_vector = self.local_data[self.inputs[0]]
         r = self.local_data["r"]
 
@@ -130,6 +136,7 @@ class ToySphereDiscipline(MDODiscipline):
         self.mesh_coupling.compute(input_vector, r, r)
         output = {self.outputs[0]: input_vector}
         self.store_local_data(**output)
+        LOGGER.info("End running discipline")
 
     def close(self):
         self.mesh_coupling.close()

@@ -41,14 +41,16 @@ class TestGEMSWrapper(unittest.TestCase):
             infinityTemperature=350.0,
         )
 
+        toy1.add_differentiated_inputs(["T_out"])
+        toy1.add_differentiated_outputs(["T_in"])
+
         neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
         t_array = full(neutral_mesh_size, 300.0) + random(neutral_mesh_size) * 10.0
         t_out = {"T_out": t_array}
         res = toy1.execute(deepcopy(t_out))
         res.update(t_out)
-        print(res)
 
-        # toy1._compute_jacobian()
+        toy1.linearize()
 
         # toy1.close()
 

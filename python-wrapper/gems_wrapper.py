@@ -18,7 +18,7 @@ from gems_mpi_plugins.api import configure_logger
 from gems_mpi_plugins.core.mpi_manager import MPIManager
 import coupling
 
-LOGGER = configure_logger("GEMS", "DEBUG")
+LOGGER = logging.getLogger(__file__)
 
 
 PETSC_DETERMINE = PETSc.DETERMINE
@@ -153,7 +153,6 @@ class ToySphereDiscipline(MDODiscipline):
 
         # Initialize Jacobian matrices
         self._init_jacobian(with_zeros=True)
-        self.jac[outputs[0]] = {}
         matInputs = PETSc.Mat().create(comm=comm)
         matInputs.setSizes(
             (
@@ -168,11 +167,12 @@ class ToySphereDiscipline(MDODiscipline):
             rowId, colIds, values = self.mesh_coupling.extractOutputInputJacobianRow(i)
             rowIds = [rowId]
             # CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
-            matInputs.setValues(rowIds, colIds, values, addv=1)
+            matInputs.setValues(rowIds, colIds, values)
 
         matInputs.assemblyBegin()
         matInputs.assemblyEnd()
         self.jac[outputs[0]][inputs[0]] = matInputs
+
         viewer = PETSc.Viewer().createASCII("CouplingJac.dat", mode=1, comm=comm)
         viewer.view(self.jac[outputs[0]][inputs[0]])
 
@@ -186,14 +186,10 @@ class ToySphereDiscipline(MDODiscipline):
                 i
             )
             rowIds = [rowId]
-            colIds = [1]
+            colIds = [0]
             # CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
-            print("Jac r", i, values)
             matControl.setValues(rowIds, colIds, values, addv=1)
 
         matControl.assemblyBegin()
         matControl.assemblyEnd()
         self.jac[outputs[0]]["r"] = matControl
-
-        viewer = PETSc.Viewer().createASCII("RadiusJac.dat", mode=1, comm=comm)
-        viewer.view(self.jac[outputs[0]]["r"])

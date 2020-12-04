@@ -170,7 +170,7 @@ def test_basic():
 
     # Execute the scenario with the inputs of the MDO scenario as a dict
     scenario.set_differentiation_method("user")
-    scenario.execute(input_data={"max_iter": 30, "algo": "NLOPT_SLSQP"})
+    scenario.execute(input_data={"max_iter": 100, "algo": "NLOPT_SLSQP"})
 
 
 if __name__ == "__main__":

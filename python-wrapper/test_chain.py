@@ -8,15 +8,14 @@
 #        :author:  Francois Gallard
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 from __future__ import print_function, unicode_literals
-import sys, petsc4py
 
-petsc4py.init(sys.argv)
 import unittest
 from math import pi
 from numpy import ones, full, mean
 from numpy.random import random
 
 from gems_mpi_plugins.core.mpi_manager import MPIManager
+
 from gems_mpi_plugins.core.parallel_chain import MDOParallelMPIChain
 from gems_wrapper import ToySphereDiscipline
 
@@ -46,8 +45,6 @@ def test_basic():
         infinityTemperature=350.0,
     )
 
-    # neutral_mesh_size = toy_inner.mesh_coupling.getNeutralMeshSize()
-
     toy_outer = ToySphereDiscipline(
         "Sphere1",
         ["T_in"],
@@ -69,8 +66,8 @@ def test_basic():
 
     chain = MDOParallelMPIChain([toy_outer, toy_inner])
     default_inputs = chain.default_inputs
-    inputs = None
 
+    inputs = None
     if chain.execution_context.is_rank_on_mpi_group():
         r = full(1, 10.0)
         neutral_size = default_inputs["T_in"].shape[0]
@@ -97,5 +94,4 @@ def test_basic():
     #     toy_outer.close()
 
 
-if __name__ == "__main__":
-    test_basic()
+test_basic()

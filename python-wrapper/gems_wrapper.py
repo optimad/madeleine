@@ -11,6 +11,7 @@ from __future__ import print_function
 from numpy import ones
 import numpy as np
 from petsc4py import PETSc
+import logging
 
 from gems.core.discipline import MDODiscipline
 from gems_mpi_plugins.api import create_execution_context, create_user_partition

@@ -7,7 +7,9 @@
 #                      initial documentation
 #        :author:  Francois Gallard
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
+import gc
 
+gc.disable()
 import unittest
 from numpy import ones, full, mean, array
 
@@ -104,7 +106,9 @@ class ObjectiveDiscipline(MDODiscipline):
 class TestGEMSWrapper(unittest.TestCase):
     def test_basic(self):
 
-        MPIManager().clear(1)
+        manager = MPIManager()
+        manager.clear(1)
+        manager.overlap_comms = True
 
         mesh_file = "../examples/data/unitSphere5.stl"
         neutral_mesh_file = "../examples/data/unitSphere4.stl"
@@ -124,8 +128,6 @@ class TestGEMSWrapper(unittest.TestCase):
             emissivity=1e-6,
             infinityTemperature=350.0,
         )
-
-        # neutral_mesh_size = toy_inner.mesh_coupling.getNeutralMeshSize()
 
         toy_outer = ToySphereDiscipline(
             "Sphere1",
@@ -150,6 +152,9 @@ class TestGEMSWrapper(unittest.TestCase):
         acceleration = None
         # acceleration = ParallelMDAJacobi.SECANT_ACCELERATION
         # acceleration = ParallelMDAJacobi.M2D_ACCELERATION
+
+        COMM.Barrier()
+
         mda = ParallelMDAJacobi(
             disciplines=disciplines,
             name="mda",
@@ -178,7 +183,6 @@ class TestGEMSWrapper(unittest.TestCase):
 
         if mda.execution_context.is_rank_on_mpi_group():
             print("Execution", out)
-            print("Linearize", out_jac["obj"]["r"].getDenseArray())
 
         COMM.Barrier()
         print("Its finished")

@@ -143,7 +143,6 @@ void JacobianMatricesManager::computeOutputInputJacobian(MPI_Comm comm, double e
         MatDestroy(&DN_T);
     } else {
         Mat emissivityIdentity;
-        Mat emissivityIdentityNeutral;
         Mat E_emissivityIdentity;
         Mat E_emissivityIdentity_ND_T;
         Mat DN_T;
@@ -270,6 +269,7 @@ void JacobianMatricesManager::computeOutputControlJacobian(MPI_Comm comm, double
     VecDestroy(&dAdR_times_T);
     VecDestroy(&ellipticInverse_times_dAdR_times_T);
     MatDestroy(&ellipticOperatorControlDerivative);
+    MatDestroy(&emissivityIdentity);
     VecDestroy(&controlJacobian);
 }
 

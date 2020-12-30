@@ -186,7 +186,7 @@ class ToySphereDiscipline(MDODiscipline):
                 i
             )
             rowIds = [rowId]
-            colIds = [1]
+            colIds = [0]
             # CAVEAT: petsc4py accepts only int32 by default. bitpit indices are long integers. Cast is possible but very large meshes are not feasible
             print("Jac r", i, values)
             matControl.setValues(rowIds, colIds, values, addv=1)

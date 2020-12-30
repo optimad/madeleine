@@ -1,0 +1,43 @@
+name: gems_mpi
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  # change to select the target python version
+  - python=3.8
+  - python-graphviz
+  - setproctitle
+  - conda-forge::nlopt >=2.4.2
+  - conda-forge::pyside2
+  - conda-forge::petsc4py
+  - conda-forge::mpi4py
+  - conda-forge::liblapacke
+  - conda-forge::liblapack
+  - conda-forge::libcblas
+  - conda-forge::libblas
+  - gxx_linux-64
+  - gcc_linux-64
+  - gfortran_linux-64
+  - pip
+  - pip:
+    - fastjsonschema ; python_version>'3'
+    - future
+    - h5py >=2.3
+    - matplotlib >=2
+    - numpy >=1.10
+    - pathlib ; python_version<'3'
+    - pyxdsm < 2.1.2
+    - requests
+    - scipy >=1.1,<1.5
+    - xdsmjs
+    - openopt ==0.52
+    - openturns >=1.13, <=1.15
+    - pandas >=0.16
+    - pydoe2 >=0.3.8 ; python_version>'3'
+    - pydoe >=0.3.8 ; python_version<'3'
+    - scikit-learn >=0.18
+    - sympy >=0.7
+    - xlrd >=1
+    - xlwings ; platform_system=='Windows'
+    - pytest
+    - cython

@@ -180,6 +180,9 @@ private:
     const int m_fid_temperatureOUT;
     int m_inputField;
     int m_outputField;
+
+
+    bool m_switchOnOutput;
 };
 
 }

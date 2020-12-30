@@ -79,6 +79,8 @@ MeshCoupling::MeshCoupling(std::string disciplineName) :
     m_kernel = -1;
     m_inputField = -1;
     m_outputField = -1;
+
+    m_switchOnOutput = false;
 };
 
 /*!
@@ -240,9 +242,11 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     updateInputField(neutralInputArray,size);
 
-    std::string name = "initilizedNF";
-    m_scaledNeutralMesh->write(name);
-
+    std::string name;
+    if(m_switchOnOutput) {
+        name = "initilizedNF";
+        m_scaledNeutralMesh->write(name);
+    }
 
     //Update neutral ghost cell values
     //It should not be the case but call m_neutralGhostCommunicator->resetExchangeLists() if neutral mesh has changed.
@@ -253,8 +257,10 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     std::cout << "N_f to D_{N_f} interpolation." << std::endl;
     interpolateFromTo(m_scaledNeutralMesh.get(),&m_neutralData,m_scaledDisciplineMesh.get(),&m_disciplineData, m_inputField);
 
-    name = "intepolatedD_Nf";
-    m_scaledDisciplineMesh->write(name);
+    if(m_switchOnOutput) {
+        name = "intepolatedD_Nf";
+        m_scaledDisciplineMesh->write(name);
+    }
 
     //Update discipline ghost cell values
     std::cout << "Updatings discipline ghosts" << std::endl;
@@ -266,9 +272,10 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
 
     updateDisciplineGhosts();
 
-    name = "solutionD_Nf";
-    m_scaledDisciplineMesh->write(name);
-
+    if(m_switchOnOutput) {
+        name = "solutionD_Nf";
+        m_scaledDisciplineMesh->write(name);
+    }
 
 //    name = "Nf";
 //    m_scaledNeutralMesh->write(name);
@@ -280,18 +287,24 @@ void MeshCoupling::compute(double *neutralInputArray, std::size_t size, double n
     //This interpolation is for data check only. Input data will be overwritten at the beginning of the next compute call
     interpolateFromTo(m_scaledDisciplineMesh.get(),&m_disciplineData,m_scaledNeutralMesh.get(),&m_neutralData,m_inputField);
 
-    name = "interpolatedSolutionN_{D_Nf}";
-    m_scaledNeutralMesh->write(name);
+    if(m_switchOnOutput) {
+        name = "interpolatedSolutionN_{D_Nf}";
+        m_scaledNeutralMesh->write(name);
+    }
 
     //dynamicPartitionNeutralMeshByNeutralMeshWithData();
 
-    name = "unsortedNf";
-    m_scaledNeutralMesh->write(name);
+    if(m_switchOnOutput) {
+        name = "unsortedNf";
+        m_scaledNeutralMesh->write(name);
+    }
 
     m_scaledNeutralMesh->sortCells();
 
-    name = "sortedNf";
-    m_scaledNeutralMesh->write(name);
+    if(m_switchOnOutput) {
+        name = "sortedNf";
+        m_scaledNeutralMesh->write(name);
+    }
 
     //Update C-array to pass data to NUMPY array used by GEMS
     std::size_t counter = 0;

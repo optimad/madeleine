@@ -722,7 +722,8 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
             m_globalDisciplineId2NeutralMeshFileRank[c] = candidates[c];
         }
     }
-
+    delete [] idxDiscipline;
+    delete [] cellCentersDiscipline;
 }
 
 /*!

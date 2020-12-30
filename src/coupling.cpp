@@ -620,6 +620,7 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank(SurfUnstructured *seria
     darray3 lambda;
     darray3 xP;
     BITPIT_UNUSED(lambda);
+    std::vector<darray3> storage(3);
     bitpit::utils::DoubleFloatingEqual checkFloating;
     for(int i = 0; i < nofCellsNeutral; ++i) {
         BITPIT_UNUSED(xP);
@@ -633,7 +634,7 @@ void MeshCoupling::computeGlobalNeutralId2DisciplineRank(SurfUnstructured *seria
         //compute closest cell plane distance
         if(m_unitDisciplineMesh->getCell(id).isInterior()) {
             closestCellPlaneDist = bitpit::CGElem::distancePointPlane(tempCellCenter,
-                    m_unitDisciplineMesh->getCellVertexCoordinates(id)[0],m_unitDisciplineMesh->evalFacetNormal(id),xP);
+                    m_unitDisciplineMesh->getCellVertexCoordinates(id, storage.data())[0],m_unitDisciplineMesh->evalFacetNormal(id),xP);
 
             if(checkFloating(closestCellDist,closestCellPlaneDist)) {
                 m_globalNeutralId2NeutralMeshFilePartitionedDisciplineRank[i] = m_rank;
@@ -690,9 +691,10 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
     darray3 lambda;
     darray3 xP;
     BITPIT_UNUSED(lambda);
+    std::vector<darray3> storage(3);
     bitpit::utils::DoubleFloatingEqual checkFloating;
     for(int i = 0; i < nofCellsDiscipline; ++i) {
-        BITPIT_UNUSED(xP);
+        //BITPIT_UNUSED(xP);
         for(int j = 0; j < 3; ++j) {
             tempCellCenter[j] = cellCentersDiscipline[i * 3 + j];
         }
@@ -703,7 +705,7 @@ void MeshCoupling::computeGlobalDisciplineId2NeutralRank() {
         //compute closest cell plane distance
         if(m_unitNeutralMesh->getCell(id).isInterior()) {
             closestCellPlaneDist = bitpit::CGElem::distancePointPlane(tempCellCenter,
-                    m_unitNeutralMesh->getCellVertexCoordinates(id)[0],m_unitNeutralMesh->evalFacetNormal(id),xP);
+                    m_unitNeutralMesh->getCellVertexCoordinates(id, storage.data())[0],m_unitNeutralMesh->evalFacetNormal(id),xP);
             if(checkFloating(closestCellDist,closestCellPlaneDist)) {
                 m_globalDisciplineId2NeutralMeshFileRank[i] = m_rank;
             } else {

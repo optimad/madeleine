@@ -97,7 +97,7 @@ MeshCoupling::MeshCoupling(const std::vector<std::string> & inputNames, std::vec
 {
     m_inputDataNames = inputNames;
     m_outputDataNames = outputNames;
-    m_system = std::unique_ptr<StencilScalarSolverHandler>(new StencilScalarSolverHandler(disciplineName,true));
+    m_system = std::unique_ptr<StencilScalarSolverHandler>(new StencilScalarSolverHandler(disciplineName,false));
     m_jacobianManager = std::unique_ptr<JacobianMatricesManager>(new JacobianMatricesManager(disciplineName,comm,*(m_system.get()) ));
 };
 

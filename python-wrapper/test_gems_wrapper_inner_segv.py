@@ -9,7 +9,9 @@
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
 
 import unittest
-from numpy import ones
+from copy import deepcopy
+from numpy import ones, full
+from numpy.random import random
 
 from gems_mpi_plugins.core.mpi_manager import MPIManager
 from gems_wrapper import ToySphereDiscipline
@@ -19,31 +21,7 @@ SIZE = COMM.size
 
 
 class TestGEMSWrapper(unittest.TestCase):
-    # def test_inner(self):
-    #     MPIManager().clear(0)
-    #     mesh_file = "../examples/data/unitSphere5.stl"
-    #     neutral_mesh_file = "../examples/data/unitSphere4.stl"
-    #     toy1 = ToySphereDiscipline(
-    #         "Sphere1",
-    #         ["T_in"],
-    #         ["T_out"],
-    #         mesh_file,
-    #         neutral_mesh_file,
-    #         sphere_radius=1.0,
-    #         n_cpus=SIZE,
-    #         kernel=0,
-    #     )
-
-    #     neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
-
-    #     res = toy1.execute({"T_in": ones(neutral_mesh_size)})
-    #     print(res)
-
-    #     toy1._compute_jacobian()
-
-    #     toy1.close()
-
-    def test_outer(self):
+    def test_inner(self):
         MPIManager().clear(0)
         mesh_file = "../examples/data/unitSphere5.stl"
         neutral_mesh_file = "../examples/data/unitSphere4.stl"
@@ -55,17 +33,29 @@ class TestGEMSWrapper(unittest.TestCase):
             neutral_mesh_file,
             sphere_radius=1.0,
             n_cpus=SIZE,
-            kernel=1,
+            is_inner_sphere=True,
+            source_intensity=1.0,
+            source_direction=None,
+            thermalDiffusivityCoefficient=0.0,
+            emissivity=1e-6,
+            infinityTemperature=350.0,
         )
 
-        neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
+        # toy1.add_differentiated_inputs(["T_out"])
+        # toy1.add_differentiated_outputs(["T_in"])
 
-        res = toy1.execute({"T_out": ones(neutral_mesh_size)})
-        print(res)
+        # t_out = {}
+        # if toy1.execution_context.is_rank_on_mpi_group():
+        #     neutral_mesh_size = toy1.mesh_coupling.getNeutralMeshSize()
+        #     t_array = full(neutral_mesh_size, 300.0) + random(neutral_mesh_size) * 10.0
+        #     t_out = {"T_out": t_array}
 
-        toy1._compute_jacobian()
+        # res = toy1.execute(deepcopy(t_out))
+        # res.update(t_out)
 
-        toy1.close()
+        # # toy1.linearize()
+
+        # # toy1.close()
 
 
 if __name__ == "__main__":

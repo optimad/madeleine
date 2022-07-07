@@ -7,46 +7,91 @@
 #                      initial documentation
 #        :author:  Francois Gallard
 #    OTHER AUTHORS   - MACROSCOPIC CHANGES
+from __future__ import print_function, unicode_literals
 
 import unittest
-from numpy import ones
+from math import pi
+from numpy import ones, full, mean
+from numpy.random import random
 
-from gems.parallel.core.mpi_manager import MPIManager, get_world_comm
-from gems.parallel.core.parallel_chain import MDOParallelMPIChain
+from gems_mpi_plugins.core.mpi_manager import MPIManager
+
+from gems_mpi_plugins.core.parallel_chain import MDOParallelMPIChain
 from gems_wrapper import ToySphereDiscipline
 
-COMM = get_world_comm()
+COMM = MPIManager().main_comm
+SIZE = MPIManager().main_comm.size
 
-class TestGEMSWrapper(unittest.TestCase):
 
-    def test_basic(self):
-        MPIManager().clear(2)
+def test_basic():
+    MPIManager().clear(1)
 
-        mesh_file = "../examples/data/unitSphere5.stl"
-        neutral_mesh_file = "../examples/data/unitSphere4.stl"
+    mesh_file = "../examples/data/unitSphere5.stl"
+    neutral_mesh_file = "../examples/data/unitSphere4.stl"
 
-        toy1 = ToySphereDiscipline("Sphere1", ["Forces"], ["Pressure"], mesh_file,
-                                   neutral_mesh_file, sphere_radius=1.0,
-                                   n_cpus=2)
+    toy_inner = ToySphereDiscipline(
+        "Sphere1",
+        ["T_out"],
+        ["T_in"],
+        mesh_file,
+        neutral_mesh_file,
+        sphere_radius=1.0,
+        n_cpus=1,
+        is_inner_sphere=True,
+        source_intensity=1.0,
+        source_direction=None,
+        thermalDiffusivityCoefficient=0.0,
+        emissivity=1e-6,
+        infinityTemperature=350.0,
+    )
 
-        toy2 = ToySphereDiscipline("Sphere1", ["Pressure"], ["Forces"], mesh_file,
-                                   neutral_mesh_file, sphere_radius=1.0,
-                                   n_cpus=2)
+    toy_outer = ToySphereDiscipline(
+        "Sphere1",
+        ["T_in"],
+        ["T_out"],
+        mesh_file,
+        neutral_mesh_file,
+        sphere_radius=1.0,
+        n_cpus=1,
+        is_inner_sphere=False,
+        source_intensity=30.0,
+        source_direction=None,
+        thermalDiffusivityCoefficient=0.25,
+        emissivity=0.1,
+        infinityTemperature=400.0,
+    )
 
-        chain = MDOParallelMPIChain([toy1, toy2])
-        default_inputs = chain.default_inputs
-        inputs = None
-        if chain.execution_context.is_rank_on_mpi_group():
-            r = ones(1)
-            size_forces = default_inputs['Forces'].shape[0]
-            forces = ones(size_forces)*10.
-            inputs = {'r': r, 'Forces': forces}
+    mesh_file = "../examples/data/unitSphere5.stl"
+    neutral_mesh_file = "../examples/data/unitSphere4.stl"
 
-        out = chain.execute(inputs)
+    chain = MDOParallelMPIChain([toy_outer, toy_inner])
+    default_inputs = chain.default_inputs
 
-        if chain.execution_context.is_rank_on_mpi_group():
-            print out
+    inputs = None
+    if chain.execution_context.is_rank_on_mpi_group():
+        r = full(1, 10.0)
+        neutral_size = default_inputs["T_in"].shape[0]
+        t_array = full(neutral_size, 300.0) + random(neutral_size) * 10.0
+        t_out = {"T_out": t_array}
+        inputs = {"r": r}
+        inputs.update(t_out)
 
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main()
+    out = chain.execute(inputs)
+
+    for i in range(50):
+        out = chain.execute(out)
+
+    if chain.execution_context.is_rank_on_mpi_group():
+        target = 500.0
+        obj = 0.5 * mean((out["T_in"] - target) ** 2)
+        obj2 = 0.5 * mean((out["T_in"] - target) ** 2) * 4 * pi * r[0] ** 2
+        print("Obj is", obj, obj2)
+
+    # COMM.Barrier()
+    # if toy_inner.execution_context.is_rank_on_mpi_group():
+    #     toy_inner.close()
+    # if toy_outer.execution_context.is_rank_on_mpi_group():
+    #     toy_outer.close()
+
+
+test_basic()
